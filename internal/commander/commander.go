@@ -1,5 +1,13 @@
 package commander
 
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"io"
+	"time"
+)
+
 // all possible command sequences
 const (
 	CMD_ENTER_NORMAL         = 0x00
@@ -14,7 +22,91 @@ const COMMAND_BYTE_IDX = 2
 const COMMAND_START_SEQ_1 = 0x1A
 const COMMAND_START_SEQ_2 = 0x1B
 const COMMAND_END_SEQ = 0x1C
+const COMMAND_ACK_SEQ = 0xFF
 
-func GetDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
+const SD_CARD_TEST_TIMEOUT = 10 * time.Second
+
+type SerialWriter interface {
+	WriteSingleMessage(message []byte, size int)
+	ReadSingleMessage() []byte
+}
+
+func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
 	return [COMMAND_SEQUENCE_SIZE]byte{COMMAND_START_SEQ_1, COMMAND_START_SEQ_2, cmd, COMMAND_END_SEQ}
+}
+
+// need some sort of verification for the commands
+func EnterNormalCommand(conn SerialWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Enter Normal Command]: sending command to enter normal mode...\n")
+
+	cmd := getDispatchCommand(CMD_ENTER_NORMAL)
+	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
+
+	res := conn.ReadSingleMessage()
+	fmt.Fprintf(log, "[Enter Normal Command]: Receieved response from boards\n")
+
+	return res[0] == CMD_ENTER_NORMAL
+}
+
+// need some more verification for this
+func EnterInspectCommand(conn SerialWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Enter Inspect Command]: sending command to enter inspect mode...\n")
+
+	cmd := getDispatchCommand(CMD_ENTER_INSPECT)
+	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
+
+	res := conn.ReadSingleMessage()
+	fmt.Fprintf(log, "[Enter Inspect Command]: Receieved response from boards\n")
+
+	return res[0] == CMD_ENTER_INSPECT
+}
+
+// to verify that the SD card is working
+// 1. Check the current file size and the timestamp
+// 2. Return the system back to normal mode and wait for 10s
+// 3. Send the system back into inspect mode
+// 4. Check the new file size and timestamp, it should be bigger than the previous one
+type sdUpdate struct {
+	FileSize      uint32
+	LastTimestamp uint32
+}
+
+func getSDUpdate(conn SerialWriter, log io.Writer) *sdUpdate {
+	sdUpdateMessage := getDispatchCommand(CMD_GET_ANALOG_SD_UPDATE)
+	conn.WriteSingleMessage(sdUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
+	fmt.Fprintf(log, "[SD Update]: Sent command requesting SD card update\n")
+
+	res := conn.ReadSingleMessage()
+	fmt.Fprintf(log, "[SD Update]: Receieved response from boards\n")
+	streamReader := bytes.NewReader(res[:])
+	var updateData sdUpdate
+	if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
+		return nil
+	}
+	fmt.Fprintf(log, "[SD Update]: file size: %d, last update timestamp: %d\n", updateData.FileSize, updateData.LastTimestamp)
+
+	return &updateData
+}
+
+func CheckAnalogSDCommand(conn SerialWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker...\n")
+	firstUpdate := getSDUpdate(conn, log)
+
+	fmt.Fprintf(log, "[Check Analog SD]: Entering normal mode...\n")
+	if !EnterNormalCommand(conn, log) {
+		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter normal mode\n")
+		return false
+	}
+
+	time.Sleep(SD_CARD_TEST_TIMEOUT)
+	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode...\n")
+	if !EnterNormalCommand(conn, log) {
+		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter inspect mode\n")
+		return false
+	}
+
+	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker again...\n")
+	secondUpdate := getSDUpdate(conn, log)
+
+	return firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp
 }

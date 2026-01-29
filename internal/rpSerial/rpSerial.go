@@ -64,39 +64,34 @@ func (r *RpSerial) sync() {
 }
 
 // read a single message in the buffer, continue until you reach the end characters \r\n
-func (r *RpSerial) ReadSingleMessage() string {
-	r.tempBufIdx = 0
-
-	// reset buffer index and zero out temp buffer as a safety mechanism for now
-	r.tempBufIdx = 0
-	for i := range TEMP_BUF_SIZE {
-		r.tempBuf[i] = 0
-	}
+func (r *RpSerial) ReadSingleMessage() []byte {
+	tempBufIdx := 0
+	tempBuf := [TEMP_BUF_SIZE]byte{}
 
 	for {
-		_, err := r.Read(r.tempBuf[r.tempBufIdx : r.tempBufIdx+1])
+		_, err := r.Read(tempBuf[tempBufIdx : tempBufIdx+1])
 
 		if err != nil {
 			r.logger.Error("Error while trying to read new sequence", zap.Error(err))
 			r.sync()
-			r.tempBufIdx = 0 // Reset on error/sync
+			tempBufIdx = 0 // Reset on error/sync
 			continue
 		}
-		r.tempBufIdx++
+		tempBufIdx++
 
-		if r.tempBufIdx >= 2 && r.tempBuf[r.tempBufIdx-2] == '\r' && r.tempBuf[r.tempBufIdx-1] == '\n' {
+		if tempBufIdx >= 2 && tempBuf[tempBufIdx-2] == '\r' && tempBuf[tempBufIdx-1] == '\n' {
 			break
 		}
 
 		// handle overflow
-		if r.tempBufIdx >= TEMP_BUF_SIZE {
+		if tempBufIdx >= TEMP_BUF_SIZE {
 			r.logger.Warn("Buffer overflow, forcefully terminating")
-			r.tempBuf[TEMP_BUF_SIZE-1] = 0
-			return string(r.tempBuf[:])
+			tempBuf[TEMP_BUF_SIZE-1] = 0
+			return tempBuf[:]
 		}
 	}
 
-	return string(r.tempBuf[:r.tempBufIdx-2])
+	return tempBuf[:tempBufIdx-2]
 }
 
 func (r *RpSerial) WriteSingleMessage(message []byte, size int) {
@@ -107,4 +102,8 @@ func (r *RpSerial) WriteSingleMessage(message []byte, size int) {
 	} else {
 		r.logger.Info("Wrote message to serial port", zap.Int("bytesWritten", n), zap.ByteString("string", message))
 	}
+}
+
+func ListPorts() ([]string, error) {
+	return serial.GetPortsList()
 }
