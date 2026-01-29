@@ -1,18 +1,12 @@
 package commander
 
 import (
+	"UCLA-Rocket-Project/ILAYE/internal/globals"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"time"
-)
-
-// all possible command sequences
-const (
-	CMD_ENTER_NORMAL         = 0x00
-	CMD_ENTER_INSPECT        = 0x01
-	CMD_GET_ANALOG_SD_UPDATE = 0xA0
 )
 
 const COMMAND_SEQUENCE_SIZE = 4
@@ -39,26 +33,26 @@ func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
 func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Enter Normal Command]: sending command to enter normal mode...\n")
 
-	cmd := getDispatchCommand(CMD_ENTER_NORMAL)
+	cmd := getDispatchCommand(globals.CMD_ENTER_NORMAL)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
 	res := conn.ReadSingleMessage()
 	fmt.Fprintf(log, "[Enter Normal Command]: Receieved response from boards\n")
 
-	return res[0] == CMD_ENTER_NORMAL
+	return res[0] == globals.CMD_ENTER_NORMAL
 }
 
 // need some more verification for this
 func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Enter Inspect Command]: sending command to enter inspect mode...\n")
 
-	cmd := getDispatchCommand(CMD_ENTER_INSPECT)
+	cmd := getDispatchCommand(globals.CMD_ENTER_INSPECT)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
 	res := conn.ReadSingleMessage()
 	fmt.Fprintf(log, "[Enter Inspect Command]: Receieved response from boards\n")
 
-	return res[0] == CMD_ENTER_INSPECT
+	return res[0] == globals.CMD_ENTER_INSPECT
 }
 
 // to verify that the SD card is working
@@ -72,7 +66,7 @@ type sdUpdate struct {
 }
 
 func getSDUpdate(conn SerialReaderWriter, log io.Writer) *sdUpdate {
-	sdUpdateMessage := getDispatchCommand(CMD_GET_ANALOG_SD_UPDATE)
+	sdUpdateMessage := getDispatchCommand(globals.CMD_GET_ANALOG_SD_UPDATE)
 	conn.WriteSingleMessage(sdUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
 	fmt.Fprintf(log, "[SD Update]: Sent command requesting SD card update\n")
 

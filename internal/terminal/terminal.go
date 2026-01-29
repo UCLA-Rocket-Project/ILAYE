@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"UCLA-Rocket-Project/ILAYE/internal/globals"
 	"fmt"
 	"os"
 
@@ -49,12 +50,17 @@ type model struct {
 	// test runner internal state
 }
 
+type commandAndDesc struct {
+	commandName string
+	opCode      byte
+}
+
 var logPool []string
-var availableTests []string = []string{
-	"Select All",
-	"Enter Normal Mode",
-	"Enter Inspect Mode",
-	"Get Analog SD Card Update",
+var availableTests []commandAndDesc = []commandAndDesc{
+	{"Select All", 0xFF},
+	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
+	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
+	{"Get Analog SD Card Update", globals.CMD_GET_ANALOG_SD_UPDATE},
 }
 
 func StartApplication(portLister PortLister, connector PortConnector, logger *zap.Logger) {
