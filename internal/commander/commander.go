@@ -26,7 +26,7 @@ const COMMAND_ACK_SEQ = 0xFF
 
 const SD_CARD_TEST_TIMEOUT = 10 * time.Second
 
-type SerialWriter interface {
+type SerialReaderWriter interface {
 	WriteSingleMessage(message []byte, size int)
 	ReadSingleMessage() []byte
 }
@@ -36,7 +36,7 @@ func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
 }
 
 // need some sort of verification for the commands
-func EnterNormalCommand(conn SerialWriter, log io.Writer) bool {
+func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Enter Normal Command]: sending command to enter normal mode...\n")
 
 	cmd := getDispatchCommand(CMD_ENTER_NORMAL)
@@ -49,7 +49,7 @@ func EnterNormalCommand(conn SerialWriter, log io.Writer) bool {
 }
 
 // need some more verification for this
-func EnterInspectCommand(conn SerialWriter, log io.Writer) bool {
+func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Enter Inspect Command]: sending command to enter inspect mode...\n")
 
 	cmd := getDispatchCommand(CMD_ENTER_INSPECT)
@@ -71,7 +71,7 @@ type sdUpdate struct {
 	LastTimestamp uint32
 }
 
-func getSDUpdate(conn SerialWriter, log io.Writer) *sdUpdate {
+func getSDUpdate(conn SerialReaderWriter, log io.Writer) *sdUpdate {
 	sdUpdateMessage := getDispatchCommand(CMD_GET_ANALOG_SD_UPDATE)
 	conn.WriteSingleMessage(sdUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
 	fmt.Fprintf(log, "[SD Update]: Sent command requesting SD card update\n")
@@ -88,7 +88,7 @@ func getSDUpdate(conn SerialWriter, log io.Writer) *sdUpdate {
 	return &updateData
 }
 
-func CheckAnalogSDCommand(conn SerialWriter, log io.Writer) bool {
+func CheckAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker...\n")
 	firstUpdate := getSDUpdate(conn, log)
 
