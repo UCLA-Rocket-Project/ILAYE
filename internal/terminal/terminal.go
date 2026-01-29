@@ -1,9 +1,11 @@
 package terminal
 
 import (
+	"UCLA-Rocket-Project/ILAYE/internal/commander"
 	"UCLA-Rocket-Project/ILAYE/internal/globals"
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"go.uber.org/zap"
@@ -48,6 +50,55 @@ type model struct {
 	selectedTests map[int]struct{}
 
 	// test runner internal state
+	// test runner internal state
+	results []TestResult
+	logChan chan any
+}
+
+type TestStatus int
+
+const (
+	StatusPending TestStatus = iota
+	StatusRunning
+	StatusPass
+	StatusFail
+)
+
+type TestResult struct {
+	Name   string
+	Logs   []string
+	Status TestStatus
+}
+
+// satisfy the logging interface
+type LogMsg string
+
+type TestStartMsg struct {
+	Index int
+}
+
+type TestResultMsg struct {
+	Index   int
+	Success bool
+}
+
+type chanWriter struct {
+	ch chan any
+}
+
+func (w *chanWriter) Write(p []byte) (n int, err error) {
+	w.ch <- LogMsg(string(p))
+	return len(p), nil
+}
+
+func waitForLog(sub <-chan any) tea.Cmd {
+	return func() tea.Msg {
+		msg, ok := <-sub
+		if !ok {
+			return nil
+		}
+		return msg
+	}
 }
 
 type commandAndDesc struct {
@@ -109,6 +160,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
+	case LogMsg:
+		// Find currently running test and append log
+		for i := range m.results {
+			if m.results[i].Status == StatusRunning {
+				m.results[i].Logs = append(m.results[i].Logs, string(msg))
+				break
+			}
+		}
+		return m, waitForLog(m.logChan)
+	case TestStartMsg:
+		if msg.Index >= 0 && msg.Index < len(m.results) {
+			m.results[msg.Index].Status = StatusRunning
+		}
+		return m, waitForLog(m.logChan)
+	case TestResultMsg:
+		if msg.Index >= 0 && msg.Index < len(m.results) {
+			if msg.Success {
+				m.results[msg.Index].Status = StatusPass
+			} else {
+				m.results[msg.Index].Status = StatusFail
+			}
+		}
+		return m, waitForLog(m.logChan)
 	}
 
 	switch m.uiState {
@@ -198,6 +272,59 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.uiState = VIEW_TEST_RUNNER
 			m.cursor = 0
+			m.logChan = make(chan any)
+
+			// Initialize results
+			m.results = []TestResult{}
+			// Calculate mapping from result index to availableTests index is not needed
+			// if we iterate availableTests in order in both places.
+			// But the goroutine iterates availableTests and only creates results for selected ones.
+			// So we need to match that.
+			for idx, test := range availableTests {
+				if idx == 0 {
+					continue
+				}
+				if _, ok := m.selectedTests[idx]; ok {
+					m.results = append(m.results, TestResult{
+						Name:   test.commandName,
+						Status: StatusPending,
+						Logs:   []string{},
+					})
+				}
+			}
+
+			// Run tests in a separate goroutine
+			go func() {
+				defer close(m.logChan)
+				w := &chanWriter{ch: m.logChan}
+				resultIdx := 0
+				for idx := range availableTests { // iterate in order
+					if idx == 0 {
+						continue // skip select all
+					}
+					if _, ok := m.selectedTests[idx]; !ok {
+						continue
+					}
+
+					w.ch <- TestStartMsg{Index: resultIdx}
+
+					success := false
+					// Map index to commander function
+					switch availableTests[idx].opCode {
+					case globals.CMD_ENTER_NORMAL:
+						success = commander.EnterNormalCommand(m.serial, w)
+					case globals.CMD_ENTER_INSPECT:
+						success = commander.EnterInspectCommand(m.serial, w)
+					case globals.CMD_GET_ANALOG_SD_UPDATE:
+						success = commander.CheckAnalogSDCommand(m.serial, w)
+					}
+
+					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
+					resultIdx++
+				}
+			}()
+
+			return m, waitForLog(m.logChan)
 		}
 	}
 
@@ -236,18 +363,33 @@ func (m model) View() string {
 			} else {
 				s += " "
 			}
-			s += fmt.Sprintf("] %s\n", test)
+			s += fmt.Sprintf("] %s\n", test.commandName)
 		}
 
 		s += "\n\n<space> to select | <enter> to proceed\n"
+
 	case VIEW_TEST_RUNNER:
-		s += "The selected tests are:\n"
-		for idx := range m.selectedTests {
-			// skip the select all option
-			if idx == 0 {
-				continue
+		s += "Running Tests...\n\n"
+		for _, res := range m.results {
+			switch res.Status {
+			case StatusPending:
+				s += fmt.Sprintf("[ ] %s\n", res.Name)
+			case StatusRunning:
+				s += fmt.Sprintf("[...] %s\n", res.Name)
+			case StatusPass:
+				s += fmt.Sprintf("[✓] %s\n", res.Name)
+			case StatusFail:
+				s += fmt.Sprintf("[x] %s\n", res.Name)
 			}
-			s += fmt.Sprintf("- %s\n", availableTests[idx])
+
+			if len(res.Logs) > 0 {
+				for _, log := range res.Logs {
+					s += fmt.Sprintf("    %s", log)
+					if !strings.HasSuffix(log, "\n") {
+						s += "\n"
+					}
+				}
+			}
 		}
 	}
 

@@ -24,16 +24,8 @@ func NewLogger(logFilePath string) (*zap.Logger, error) {
 		zapcore.DebugLevel,
 	)
 
-	stdoutCore := zapcore.NewCore(
-		encoder,
-		zapcore.AddSync(os.Stdout),
-		zapcore.DebugLevel,
-	)
-
-	core := zapcore.NewTee(fileCore, stdoutCore)
-
 	logger := zap.New(
-		core,
+		fileCore,
 		zap.AddCaller(),
 		zap.AddStacktrace(zapcore.WarnLevel),
 		zap.Development(),

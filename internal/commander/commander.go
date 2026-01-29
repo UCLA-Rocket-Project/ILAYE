@@ -37,7 +37,12 @@ func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
 	res := conn.ReadSingleMessage()
-	fmt.Fprintf(log, "[Enter Normal Command]: Receieved response from boards\n")
+
+	if res[0] == globals.CMD_ENTER_NORMAL {
+		fmt.Fprintf(log, "[Enter Normal Command]: Normal mode transition acknowledged\n")
+	} else {
+		fmt.Fprintf(log, "[Enter Normal Command]: Could not enter normal mode")
+	}
 
 	return res[0] == globals.CMD_ENTER_NORMAL
 }
@@ -50,7 +55,12 @@ func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
 	res := conn.ReadSingleMessage()
-	fmt.Fprintf(log, "[Enter Inspect Command]: Receieved response from boards\n")
+
+	if res[0] == globals.CMD_ENTER_INSPECT {
+		fmt.Fprintf(log, "[Enter Inspect Command]: Inspect mode transition acknowledged\n")
+	} else {
+		fmt.Fprintf(log, "[Enter Inspect Command]: Could not enter inspect mode\n")
+	}
 
 	return res[0] == globals.CMD_ENTER_INSPECT
 }
