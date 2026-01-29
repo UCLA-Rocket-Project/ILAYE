@@ -108,3 +108,7 @@ func (r *RpSerial) WriteSingleMessage(message []byte, size int) {
 		r.logger.Info("Wrote message to serial port", zap.Int("bytesWritten", n), zap.ByteString("string", message))
 	}
 }
+
+func GetPortsList() ([]string, error) {
+	return serial.GetPortsList()
+}
