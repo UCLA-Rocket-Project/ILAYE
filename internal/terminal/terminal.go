@@ -44,13 +44,18 @@ type model struct {
 	serial         SerialReaderWriter
 
 	// select tests internal state
-	availableTests []string
-	selectedTests  map[int]byte
+	selectedTests map[int]struct{}
 
 	// test runner internal state
 }
 
 var logPool []string
+var availableTests []string = []string{
+	"Select All",
+	"Enter Normal Mode",
+	"Enter Inspect Mode",
+	"Get Analog SD Card Update",
+}
 
 func StartApplication(portLister PortLister, connector PortConnector, logger *zap.Logger) {
 	if _, err := tea.NewProgram(initialModel(portLister, connector)).Run(); err != nil {
@@ -72,13 +77,7 @@ func initialModel(portLister PortLister, connector PortConnector) model {
 		uiState:        VIEW_LIST_PORTS,
 		potentialPorts: ports,
 		connector:      connector,
-		availableTests: []string{
-			"Select All",
-			"Enter Normal Mode",
-			"Enter Inspect Mode",
-			"Get Analog SD Card Update",
-		},
-		selectedTests: make(map[int]byte),
+		selectedTests:  make(map[int]struct{}),
 	}
 }
 
@@ -112,7 +111,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case VIEW_LOADING:
 		return m.updateLoading(msg)
 	case VIEW_SELECT_TESTS:
-
+		return m.updateSelectTests(msg)
 	}
 
 	return m, nil
@@ -139,18 +138,63 @@ func (m model) updatePortSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case connectionSuccessMsg:
 		m.serial = msg
-		m.uiState = VIEW_SELECT_TESTS
 		m.cursor = 0
+		m.uiState = VIEW_SELECT_TESTS
 		return m, nil
 	case connectionErrorMsg:
 		m.err = msg
 		m.uiState = VIEW_LIST_PORTS
 		return m, nil
 	}
+	return m, nil
+}
+
+func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down":
+			if m.cursor < len(availableTests)-1 {
+				m.cursor++
+			}
+		case " ":
+			if m.cursor == 0 {
+				if _, ok := m.selectedTests[m.cursor]; !ok {
+					for i := range len(availableTests) {
+						m.selectedTests[i] = struct{}{}
+					}
+				} else {
+					for i := range len(availableTests) {
+						delete(m.selectedTests, i)
+					}
+				}
+
+			} else {
+				if _, ok := m.selectedTests[m.cursor]; !ok {
+					m.selectedTests[m.cursor] = struct{}{}
+				} else {
+					delete(m.selectedTests, m.cursor)
+				}
+			}
+
+		case "enter":
+			if len(m.selectedTests) == 0 {
+				// TODO: put some kind of error message here that says you have to select at least one test
+				return m, nil
+			}
+			m.uiState = VIEW_TEST_RUNNER
+			m.cursor = 0
+		}
+	}
+
 	return m, nil
 }
 
@@ -173,7 +217,32 @@ func (m model) View() string {
 	case VIEW_LOADING:
 		s += "Connecting...\n"
 	case VIEW_SELECT_TESTS:
-		s += "Here are the tests that you see!\n"
+		s += "See the tests available!\n\n"
+		for i, test := range availableTests {
+			if m.cursor == i {
+				s += ">"
+			} else {
+				s += " "
+			}
+			s += " ["
+			if _, ok := m.selectedTests[i]; ok {
+				s += "x"
+			} else {
+				s += " "
+			}
+			s += fmt.Sprintf("] %s\n", test)
+		}
+
+		s += "\n\n<space> to select | <enter> to proceed\n"
+	case VIEW_TEST_RUNNER:
+		s += "The selected tests are:\n"
+		for idx := range m.selectedTests {
+			// skip the select all option
+			if idx == 0 {
+				continue
+			}
+			s += fmt.Sprintf("- %s\n", availableTests[idx])
+		}
 	}
 
 	return s
