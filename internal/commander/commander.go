@@ -100,6 +100,13 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer) *sdUpdate {
 }
 
 func CheckAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
+	// enter inspect mode first
+	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode...\n")
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter inspect mode\n")
+		return false
+	}
+
 	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker...\n")
 	firstUpdate := getSDUpdate(conn, log)
 
@@ -115,11 +122,12 @@ func CheckAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 
 	time.Sleep(SD_CARD_TEST_TIMEOUT)
 	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode...\n")
-	if !EnterNormalCommand(conn, log) {
+	if !EnterInspectCommand(conn, log) {
 		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter inspect mode\n")
 		return false
 	}
 
+	time.Sleep(1 * time.Second)
 	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker again...\n")
 	secondUpdate := getSDUpdate(conn, log)
 
