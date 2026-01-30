@@ -21,7 +21,7 @@ const (
 
 type SerialReaderWriter interface {
 	WriteSingleMessage(message []byte, size int)
-	ReadSingleMessage() []byte
+	ReadSingleOrTimeout() ([]byte, error)
 }
 
 type connectionSuccessMsg SerialReaderWriter

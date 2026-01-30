@@ -19,7 +19,12 @@ func main() {
 	defer log.Sync()
 
 	connector := func(port string) (terminal.SerialReaderWriter, error) {
-		return rpSerial.NewRPSerial(port, BAUD_RATE, log), nil
+		serial := rpSerial.NewRPSerial(port, BAUD_RATE, log)
+
+		serial.ResetInputBuffer()
+		serial.ResetOutputBuffer()
+
+		return serial, nil
 	}
 
 	terminal.StartApplication(rpSerial.ListPorts, connector, log)

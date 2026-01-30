@@ -11,7 +11,9 @@ package rpSerial
 
 import (
 	"bytes"
+	"errors"
 	"strings"
+	"time"
 
 	"go.bug.st/serial"
 	"go.uber.org/zap"
@@ -20,14 +22,12 @@ import (
 const TEMP_BUF_SIZE = 256
 
 var startSequence = []byte{0x1A, 0x1B}
-var stopSequence = []byte{'\r', 0x8}
+var stopSequence = []byte{'\r', '\n'}
 
 type RpSerial struct {
 	serial.Port
 
-	logger     *zap.Logger
-	tempBuf    [TEMP_BUF_SIZE]byte
-	tempBufIdx int
+	logger *zap.Logger
 }
 
 func NewRPSerial(portName string, baudrate int, logger *zap.Logger) *RpSerial {
@@ -41,13 +41,12 @@ func NewRPSerial(portName string, baudrate int, logger *zap.Logger) *RpSerial {
 	}
 
 	return &RpSerial{
-		Port:       port,
-		logger:     logger,
-		tempBufIdx: 0,
+		Port:   port,
+		logger: logger,
 	}
 }
 
-func (r *RpSerial) sync() {
+func (r *RpSerial) Sync() {
 	r.logger.Warn("Resyncing serial port")
 	twoBytes := [2]byte{0x0, 0x0}
 	oneByte := [1]byte{}
@@ -69,15 +68,16 @@ func (r *RpSerial) ReadSingleMessage() []byte {
 	tempBufIdx := 0
 	tempBuf := [TEMP_BUF_SIZE]byte{}
 
-	for {
-		// clear the serial terminal of anything that does not have to do with the actual data
-		r.readTillStartSequence()
+	// clear the serial terminal of anything that does not have to do with the actual data
+	r.readTillStartSequence()
 
+	for {
 		_, err := r.Read(tempBuf[tempBufIdx : tempBufIdx+1])
+		r.logger.Info("Got some byte at actual read ", zap.Int("receivedByte", int(tempBuf[tempBufIdx])))
 
 		if err != nil {
 			r.logger.Error("Error while trying to read new sequence", zap.Error(err))
-			r.sync()
+			r.Sync()
 			tempBufIdx = 0 // Reset on error/sync
 			continue
 		}
@@ -89,8 +89,8 @@ func (r *RpSerial) ReadSingleMessage() []byte {
 
 		// handle overflow
 		if tempBufIdx >= TEMP_BUF_SIZE {
-			r.logger.Warn("Buffer overflow, forcefully terminating")
 			tempBuf[TEMP_BUF_SIZE-1] = 0
+			r.logger.Warn("Buffer overflow, forcefully terminating", zap.ByteString("currentContents", tempBuf[:]))
 			return tempBuf[:]
 		}
 	}
@@ -126,21 +126,38 @@ func ListPorts() ([]string, error) {
 }
 
 func (r *RpSerial) readTillStartSequence() {
-	tempBufIdx := 0
-	tempBuf := [TEMP_BUF_SIZE]byte{}
+	tempBuf := [2]byte{0x00, 0x00}
+	singleBuf := [1]byte{0x00}
 
 	for {
-		_, err := r.Read(tempBuf[tempBufIdx : tempBufIdx+1])
+		_, err := r.Read(singleBuf[:])
+
+		r.logger.Info("Got some bytes while clearing for right start sequence ", zap.Int("receivedByte", int(singleBuf[0])))
 		if err != nil {
 			r.logger.Error("Error while trying to read new sequence", zap.Error(err))
-			r.sync()
-			tempBufIdx = 0 // Reset on error/sync
+			r.Sync()
 			continue
 		}
-		tempBufIdx++
 
-		if tempBufIdx >= 2 && tempBuf[tempBufIdx-2] == 0x1A && tempBuf[tempBufIdx-1] == 0x1B {
+		tempBuf[0], tempBuf[1] = tempBuf[1], singleBuf[0]
+		if tempBuf[0] == 0x1A && tempBuf[1] == 0x1B {
 			return
 		}
+	}
+}
+
+func (r *RpSerial) ReadSingleOrTimeout() ([]byte, error) {
+	resultCh := make(chan []byte, 1)
+
+	go func() {
+		resultCh <- r.ReadSingleMessage()
+	}()
+
+	select {
+	case res := <-resultCh:
+		return res, nil
+	// timeout on the boards is 10 seconds
+	case <-time.After(12 * time.Second):
+		return nil, errors.New("read timeout")
 	}
 }

@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-const COMMAND_SEQUENCE_SIZE = 4
+const COMMAND_SEQUENCE_SIZE = 3
 const COMMAND_BYTE_IDX = 2
 
 const SD_CARD_TEST_TIMEOUT = 10 * time.Second
 
 type SerialReaderWriter interface {
 	WriteSingleMessage(message []byte, size int)
-	ReadSingleMessage() []byte
+	ReadSingleOrTimeout() ([]byte, error)
 }
 
 func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
@@ -31,7 +31,11 @@ func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 	cmd := getDispatchCommand(globals.CMD_ENTER_NORMAL)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
-	res := conn.ReadSingleMessage()
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Enter Normal Command]: Read timed out")
+		return false
+	}
 
 	if res[0] == globals.CMD_ENTER_NORMAL {
 		fmt.Fprintf(log, "[Enter Normal Command]: Normal mode transition acknowledged\n")
@@ -49,7 +53,11 @@ func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 	cmd := getDispatchCommand(globals.CMD_ENTER_INSPECT)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
-	res := conn.ReadSingleMessage()
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Enter Inspect Command]: Read timed out")
+		return false
+	}
 
 	if res[0] == globals.CMD_ENTER_INSPECT {
 		fmt.Fprintf(log, "[Enter Inspect Command]: Inspect mode transition acknowledged\n")
@@ -75,7 +83,11 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer) *sdUpdate {
 	conn.WriteSingleMessage(sdUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
 	fmt.Fprintf(log, "[SD Update]: Sent command requesting SD card update\n")
 
-	res := conn.ReadSingleMessage()
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[SD Update]: Read timed out")
+		return nil
+	}
 	fmt.Fprintf(log, "[SD Update]: Receieved response from boards\n")
 	streamReader := bytes.NewReader(res[:])
 	var updateData sdUpdate
@@ -90,6 +102,10 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer) *sdUpdate {
 func CheckAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker...\n")
 	firstUpdate := getSDUpdate(conn, log)
+
+	if firstUpdate == nil {
+		return false
+	}
 
 	fmt.Fprintf(log, "[Check Analog SD]: Entering normal mode...\n")
 	if !EnterNormalCommand(conn, log) {
@@ -106,6 +122,10 @@ func CheckAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 
 	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker again...\n")
 	secondUpdate := getSDUpdate(conn, log)
+
+	if secondUpdate == nil {
+		return false
+	}
 
 	return firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp
 }
