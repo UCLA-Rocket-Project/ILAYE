@@ -5,4 +5,5 @@ const (
 	CMD_ENTER_NORMAL         = 0x00
 	CMD_ENTER_INSPECT        = 0x01
 	CMD_GET_ANALOG_SD_UPDATE = 0xA0
+	CMD_TIMEOUT              = 0xFF
 )

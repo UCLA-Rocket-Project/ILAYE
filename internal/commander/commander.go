@@ -12,12 +12,6 @@ import (
 const COMMAND_SEQUENCE_SIZE = 4
 const COMMAND_BYTE_IDX = 2
 
-// use non printable characters for the start sequence
-const COMMAND_START_SEQ_1 = 0x1A
-const COMMAND_START_SEQ_2 = 0x1B
-const COMMAND_END_SEQ = 0x1C
-const COMMAND_ACK_SEQ = 0xFF
-
 const SD_CARD_TEST_TIMEOUT = 10 * time.Second
 
 type SerialReaderWriter interface {
@@ -26,7 +20,8 @@ type SerialReaderWriter interface {
 }
 
 func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
-	return [COMMAND_SEQUENCE_SIZE]byte{COMMAND_START_SEQ_1, COMMAND_START_SEQ_2, cmd, COMMAND_END_SEQ}
+	// for consistency with terminal, use carraige return when sending back a command
+	return [COMMAND_SEQUENCE_SIZE]byte{cmd, '\r', '\n'}
 }
 
 // need some sort of verification for the commands

@@ -17,15 +17,16 @@ import (
 )
 
 const TEMP_BUF_SIZE = 256
-const STOP_SEQUENCE_SIZE = 2
+
+var startSequence = []byte{0x1A, 0x1B}
+var stopSequence = []byte{'\r', 0x8}
 
 type RpSerial struct {
 	serial.Port
 
-	logger       *zap.Logger
-	stopSequence [STOP_SEQUENCE_SIZE]byte
-	tempBuf      [TEMP_BUF_SIZE]byte
-	tempBufIdx   int
+	logger     *zap.Logger
+	tempBuf    [TEMP_BUF_SIZE]byte
+	tempBufIdx int
 }
 
 func NewRPSerial(portName string, baudrate int, logger *zap.Logger) *RpSerial {
@@ -39,10 +40,9 @@ func NewRPSerial(portName string, baudrate int, logger *zap.Logger) *RpSerial {
 	}
 
 	return &RpSerial{
-		Port:         port,
-		logger:       logger,
-		stopSequence: [STOP_SEQUENCE_SIZE]byte{'\r', '\n'},
-		tempBufIdx:   0,
+		Port:       port,
+		logger:     logger,
+		tempBufIdx: 0,
 	}
 }
 
@@ -51,7 +51,7 @@ func (r *RpSerial) sync() {
 	twoBytes := [2]byte{0x0, 0x0}
 	oneByte := [1]byte{}
 
-	for !bytes.Equal(twoBytes[:], r.stopSequence[:]) {
+	for !bytes.Equal(twoBytes[:], stopSequence[:]) {
 		_, err := r.Read(oneByte[:])
 		if err != nil {
 			r.logger.Warn("Error while resyncing serial port", zap.Error(err))
@@ -69,6 +69,9 @@ func (r *RpSerial) ReadSingleMessage() []byte {
 	tempBuf := [TEMP_BUF_SIZE]byte{}
 
 	for {
+		// clear the serial terminal of anything that does not have to do with the actual data
+		r.readTillStartSequence()
+
 		_, err := r.Read(tempBuf[tempBufIdx : tempBufIdx+1])
 
 		if err != nil {
@@ -106,4 +109,24 @@ func (r *RpSerial) WriteSingleMessage(message []byte, size int) {
 
 func ListPorts() ([]string, error) {
 	return serial.GetPortsList()
+}
+
+func (r *RpSerial) readTillStartSequence() {
+	tempBufIdx := 0
+	tempBuf := [TEMP_BUF_SIZE]byte{}
+
+	for {
+		_, err := r.Read(tempBuf[tempBufIdx : tempBufIdx+1])
+		if err != nil {
+			r.logger.Error("Error while trying to read new sequence", zap.Error(err))
+			r.sync()
+			tempBufIdx = 0 // Reset on error/sync
+			continue
+		}
+		tempBufIdx++
+
+		if tempBufIdx >= 2 && tempBuf[tempBufIdx-2] == 0x1A && tempBuf[tempBufIdx-1] == 0x1B {
+			return
+		}
+	}
 }
