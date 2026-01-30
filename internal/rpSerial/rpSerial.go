@@ -115,14 +115,40 @@ func ListPorts() ([]string, error) {
 		return nil, err
 	}
 
-	portList := make([]string, 0, len(ports)/2)
+	// Use a map to track unique ports and filter out tty.* duplicates
+	// On macOS, we prefer cu.* over tty.* for the same device
+	uniquePorts := make(map[string]bool)
+	filteredPorts := make([]string, 0)
+
 	for _, port := range ports {
-		if strings.Contains(port, "cu") {
-			portList = append(portList, port)
+		// Skip tty.* ports if we're on macOS (they're duplicates of cu.* ports)
+		if strings.Contains(port, "/dev/tty.") {
+			continue
+		}
+
+		// For Windows COM ports and macOS cu.* ports, add them
+		if !uniquePorts[port] {
+			filteredPorts = append(filteredPorts, port)
+			uniquePorts[port] = true
 		}
 	}
 
-	return portList, nil
+	// Separate into USB ports and other ports
+	usbPorts := make([]string, 0)
+	otherPorts := make([]string, 0)
+
+	for _, port := range filteredPorts {
+		lowerPort := strings.ToLower(port)
+		// Check for USB serial ports
+		if strings.Contains(lowerPort, "usbserial") || strings.Contains(lowerPort, "usb") {
+			usbPorts = append(usbPorts, port)
+		} else {
+			otherPorts = append(otherPorts, port)
+		}
+	}
+
+	// Return USB ports first, then other ports
+	return append(usbPorts, otherPorts...), nil
 }
 
 func (r *RpSerial) readTillStartSequence() {
