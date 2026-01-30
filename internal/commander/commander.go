@@ -26,7 +26,7 @@ func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
 
 // need some sort of verification for the commands
 func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
-	fmt.Fprintf(log, "[Enter Normal Command]: sending command to enter normal mode...\n")
+	fmt.Fprintf(log, "[Enter Normal Command]: sending command to enter normal mode\n")
 
 	cmd := getDispatchCommand(globals.CMD_ENTER_NORMAL)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
@@ -48,7 +48,7 @@ func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 
 // need some more verification for this
 func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
-	fmt.Fprintf(log, "[Enter Inspect Command]: sending command to enter inspect mode...\n")
+	fmt.Fprintf(log, "[Enter Inspect Command]: sending command to enter inspect mode\n")
 
 	cmd := getDispatchCommand(globals.CMD_ENTER_INSPECT)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
@@ -101,34 +101,34 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer) *sdUpdate {
 
 func CheckAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	// enter inspect mode first
-	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode...\n")
+	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode\n")
 	if !EnterInspectCommand(conn, log) {
 		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter inspect mode\n")
 		return false
 	}
 
-	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker...\n")
+	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker\n")
 	firstUpdate := getSDUpdate(conn, log)
 
 	if firstUpdate == nil {
 		return false
 	}
 
-	fmt.Fprintf(log, "[Check Analog SD]: Entering normal mode...\n")
+	fmt.Fprintf(log, "[Check Analog SD]: Entering normal mode\n")
 	if !EnterNormalCommand(conn, log) {
 		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter normal mode\n")
 		return false
 	}
 
 	time.Sleep(SD_CARD_TEST_TIMEOUT)
-	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode...\n")
+	fmt.Fprintf(log, "[Check Analog SD]: Entering inspect mode\n")
 	if !EnterInspectCommand(conn, log) {
 		fmt.Fprintf(log, "[Check Analog SD]: Failed to enter inspect mode\n")
 		return false
 	}
 
 	time.Sleep(1 * time.Second)
-	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker again...\n")
+	fmt.Fprintf(log, "[Check Analog SD]: Dispatching sd card checker again\n")
 	secondUpdate := getSDUpdate(conn, log)
 
 	if secondUpdate == nil {

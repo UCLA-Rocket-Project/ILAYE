@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"go.uber.org/zap"
 )
 
@@ -49,9 +52,11 @@ type model struct {
 	selectedTests map[int]struct{}
 
 	// test runner internal state
-	// test runner internal state
 	results []TestResult
 	logChan chan any
+
+	// spinner for loading/running states
+	spinner spinner.Model
 }
 
 type TestStatus int
@@ -64,9 +69,16 @@ const (
 )
 
 type TestResult struct {
-	Name   string
-	Logs   []string
-	Status TestStatus
+	Name      string
+	Logs      []LogEntry
+	Status    TestStatus
+	StartTime time.Time
+}
+
+// LogEntry represents a single log line with its timestamp
+type LogEntry struct {
+	Timestamp time.Time
+	Content   string
 }
 
 // satisfy the logging interface
@@ -129,11 +141,17 @@ func initialModel(portLister PortLister, connector PortConnector) model {
 		panic(fmt.Sprintf("Unable to open serial port: %v", err))
 	}
 
+	// Initialize spinner with a nice modern style
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = runningStyle
+
 	return model{
 		uiState:        VIEW_LIST_PORTS,
 		potentialPorts: ports,
 		connector:      connector,
 		selectedTests:  make(map[int]struct{}),
+		spinner:        s,
 	}
 }
 
@@ -149,70 +167,167 @@ func connectToPort(connector PortConnector, port string) tea.Cmd {
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func (m model) View() string {
-	s := ""
+	var s strings.Builder
+
+	// Error display
 	if m.err != nil {
-		s += fmt.Sprintf("Error %v\n\n", m.err)
+		errBox := lipgloss.NewStyle().
+			Foreground(colorError).
+			Bold(true).
+			Padding(0, 1).
+			Render(fmt.Sprintf("⚠ Error: %v", m.err))
+		s.WriteString(errBox + "\n\n")
 	}
 
 	switch m.uiState {
 	case VIEW_LIST_PORTS:
-		s += "Select a port:\n\n"
-		for i, port := range m.potentialPorts {
-			cursor := " "
-			if i == m.cursor {
-				cursor = ">"
-			}
-			s += fmt.Sprintf("%s %s\n", cursor, port)
-		}
+		s.WriteString(m.viewPortSelection())
 	case VIEW_LOADING:
-		s += "Connecting...\n"
+		s.WriteString(m.viewLoading())
 	case VIEW_SELECT_TESTS:
-		s += "See the tests available!\n\n"
-		for i, test := range availableTests {
-			if m.cursor == i {
-				s += ">"
-			} else {
-				s += " "
-			}
-			s += " ["
-			if _, ok := m.selectedTests[i]; ok {
-				s += "x"
-			} else {
-				s += " "
-			}
-			s += fmt.Sprintf("] %s\n", test.commandName)
+		s.WriteString(m.viewSelectTests())
+	case VIEW_TEST_RUNNER:
+		s.WriteString(m.viewTestRunner())
+	}
+
+	return s.String()
+}
+
+func (m model) viewPortSelection() string {
+	var s strings.Builder
+
+	// Header
+	header := headerStyle.Render("▸ Select Serial Port")
+	s.WriteString(header + "\n\n")
+
+	// Port list
+	for i, port := range m.potentialPorts {
+		cursor := renderCursor(i == m.cursor)
+		portName := port
+		if i == m.cursor {
+			portName = selectedItemStyle.Render(port)
+		} else {
+			portName = normalItemStyle.Render(port)
+		}
+		s.WriteString(fmt.Sprintf("  %s %s\n", cursor, portName))
+	}
+
+	s.WriteString("\n")
+	s.WriteString(renderHint("  ↑/↓ navigate • enter select • q quit"))
+
+	return s.String()
+}
+
+func (m model) viewLoading() string {
+	var s strings.Builder
+
+	// Spinner with connecting message
+	spinnerView := m.spinner.View()
+	s.WriteString(fmt.Sprintf("\n  %s  %s\n\n",
+		spinnerView,
+		normalItemStyle.Render("Connecting to port")))
+
+	return s.String()
+}
+
+func (m model) viewSelectTests() string {
+	var s strings.Builder
+
+	// Header
+	header := headerStyle.Render("▸ Select Tests to Run")
+	s.WriteString(header + "\n\n")
+
+	// Test list with checkboxes
+	for i, test := range availableTests {
+		cursor := renderCursor(i == m.cursor)
+		_, isSelected := m.selectedTests[i]
+		checkbox := renderCheckbox(isSelected)
+
+		testName := test.commandName
+		if i == m.cursor {
+			testName = selectedItemStyle.Render(testName)
+		} else if isSelected {
+			testName = successStyle.Render(testName)
+		} else {
+			testName = normalItemStyle.Render(testName)
 		}
 
-		s += "\n\n<space> to select | <enter> to proceed\n"
+		s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, checkbox, testName))
+	}
 
-	case VIEW_TEST_RUNNER:
-		s += "Running Tests...\n\n"
-		for _, res := range m.results {
-			switch res.Status {
-			case StatusPending:
-				s += fmt.Sprintf("[ ] %s\n", res.Name)
-			case StatusRunning:
-				s += fmt.Sprintf("[...] %s\n", res.Name)
-			case StatusPass:
-				s += fmt.Sprintf("[✓] %s\n", res.Name)
-			case StatusFail:
-				s += fmt.Sprintf("[x] %s\n", res.Name)
-			}
+	s.WriteString("\n")
+	s.WriteString(renderHint("  ↑/↓ navigate • space toggle • enter run • q quit"))
 
-			if len(res.Logs) > 0 {
-				for _, log := range res.Logs {
-					s += fmt.Sprintf("    %s", log)
-					if !strings.HasSuffix(log, "\n") {
-						s += "\n"
-					}
-				}
+	return s.String()
+}
+
+func (m model) viewTestRunner() string {
+	var s strings.Builder
+
+	// Count completed tests
+	completed := 0
+	passed := 0
+	for _, res := range m.results {
+		if res.Status == StatusPass || res.Status == StatusFail {
+			completed++
+			if res.Status == StatusPass {
+				passed++
 			}
 		}
 	}
 
-	return s
+	// Just add a small top margin
+	s.WriteString("\n")
+
+	// Test results
+	for _, res := range m.results {
+		// Status icon + test name
+		icon := renderStatusIcon(res.Status, m.spinner.View())
+		name := renderTestName(res.Name, res.Status)
+		s.WriteString(fmt.Sprintf("  %s  %s\n", icon, name))
+
+		// Log entries with timestamps
+		if len(res.Logs) > 0 {
+			for _, log := range res.Logs {
+				timestamp := timestampStyle.Render(log.Timestamp.Format("15:04:05.000"))
+				content := strings.TrimSuffix(log.Content, "\n")
+
+				// Handle multi-line log content
+				lines := strings.Split(content, "\n")
+				for j, line := range lines {
+					if j == 0 {
+						s.WriteString(fmt.Sprintf("     %s  %s\n", timestamp, logContentStyle.Render(line)))
+					} else {
+						// Continuation lines without timestamp
+						s.WriteString(fmt.Sprintf("     %s  %s\n", strings.Repeat(" ", 12), logContentStyle.Render(line)))
+					}
+				}
+			}
+		}
+		s.WriteString("\n")
+	}
+
+	// Test summary
+	if completed == len(m.results) && len(m.results) > 0 {
+		// All tests done - show final summary
+		summaryStyle := successStyle
+		if passed != completed {
+			summaryStyle = errorStyle
+		}
+		s.WriteString(mutedStyle.Render("  "+strings.Repeat("─", 40)) + "\n")
+		s.WriteString(fmt.Sprintf("  %s\n\n", summaryStyle.Render(fmt.Sprintf("%d/%d tests passed", passed, len(m.results)))))
+	}
+
+	// Footer hint - show restart option when tests are done
+	if completed == len(m.results) && len(m.results) > 0 {
+		s.WriteString(renderHint("  r run more tests • q quit"))
+	} else {
+		s.WriteString(renderHint("  q quit"))
+	}
+
+	return s.String()
 }

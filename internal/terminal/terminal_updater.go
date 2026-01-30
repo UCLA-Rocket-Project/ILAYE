@@ -3,7 +3,9 @@ package terminal
 import (
 	"UCLA-Rocket-Project/ILAYE/internal/commander"
 	"UCLA-Rocket-Project/ILAYE/internal/globals"
+	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -14,11 +16,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	case LogMsg:
-		// Find currently running test and append log
+		// Find currently running test and append log with timestamp
 		for i := range m.results {
 			if m.results[i].Status == StatusRunning {
-				m.results[i].Logs = append(m.results[i].Logs, string(msg))
+				m.results[i].Logs = append(m.results[i].Logs, LogEntry{
+					Timestamp: time.Now(),
+					Content:   string(msg),
+				})
 				break
 			}
 		}
@@ -26,6 +35,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TestStartMsg:
 		if msg.Index >= 0 && msg.Index < len(m.results) {
 			m.results[msg.Index].Status = StatusRunning
+			m.results[msg.Index].StartTime = time.Now()
 		}
 		return m, waitForLog(m.logChan)
 	case TestResultMsg:
@@ -46,6 +56,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLoading(msg)
 	case VIEW_SELECT_TESTS:
 		return m.updateSelectTests(msg)
+	case VIEW_TEST_RUNNER:
+		return m.updateTestRunner(msg)
 	}
 
 	return m, nil
@@ -65,7 +77,10 @@ func (m model) updatePortSelection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			m.uiState = VIEW_LOADING
-			return m, connectToPort(m.connector, m.potentialPorts[m.cursor])
+			return m, tea.Batch(
+				connectToPort(m.connector, m.potentialPorts[m.cursor]),
+				m.spinner.Tick,
+			)
 		}
 	}
 
@@ -142,7 +157,7 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.results = append(m.results, TestResult{
 						Name:   test.commandName,
 						Status: StatusPending,
-						Logs:   []string{},
+						Logs:   []LogEntry{},
 					})
 				}
 			}
@@ -178,7 +193,36 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}()
 
-			return m, waitForLog(m.logChan)
+			return m, tea.Batch(waitForLog(m.logChan), m.spinner.Tick)
+		}
+	}
+
+	return m, nil
+}
+
+func (m model) updateTestRunner(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check if all tests are complete
+	allComplete := true
+	for _, res := range m.results {
+		if res.Status == StatusPending || res.Status == StatusRunning {
+			allComplete = false
+			break
+		}
+	}
+
+	// Only handle 'r' key when all tests are done
+	if allComplete {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "r":
+				// Reset and go back to test selection
+				m.uiState = VIEW_SELECT_TESTS
+				m.cursor = 0
+				m.selectedTests = make(map[int]struct{})
+				m.results = nil
+				return m, nil
+			}
 		}
 	}
 
