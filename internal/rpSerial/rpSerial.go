@@ -11,6 +11,7 @@ package rpSerial
 
 import (
 	"bytes"
+	"strings"
 
 	"go.bug.st/serial"
 	"go.uber.org/zap"
@@ -108,7 +109,20 @@ func (r *RpSerial) WriteSingleMessage(message []byte, size int) {
 }
 
 func ListPorts() ([]string, error) {
-	return serial.GetPortsList()
+	// there is an issue of there being duplicate ports
+	ports, err := serial.GetPortsList()
+	if err != nil {
+		return nil, err
+	}
+
+	portList := make([]string, 0, len(ports)/2)
+	for _, port := range ports {
+		if strings.Contains(port, "cu") {
+			portList = append(portList, port)
+		}
+	}
+
+	return portList, nil
 }
 
 func (r *RpSerial) readTillStartSequence() {
