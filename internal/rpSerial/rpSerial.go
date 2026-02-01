@@ -22,7 +22,7 @@ import (
 const TEMP_BUF_SIZE = 256
 
 var startSequence = []byte{0x1A, 0x1B}
-var stopSequence = []byte{'\r', '\n'}
+var stopSequence = []byte{0x1C, '\n'}
 
 type RpSerial struct {
 	serial.Port
@@ -83,7 +83,7 @@ func (r *RpSerial) ReadSingleMessage() []byte {
 		}
 		tempBufIdx++
 
-		if tempBufIdx >= 2 && tempBuf[tempBufIdx-2] == '\r' && tempBuf[tempBufIdx-1] == '\n' {
+		if tempBufIdx >= 2 && tempBuf[tempBufIdx-2] == stopSequence[0] && tempBuf[tempBufIdx-1] == stopSequence[1] {
 			break
 		}
 
