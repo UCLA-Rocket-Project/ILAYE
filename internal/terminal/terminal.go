@@ -17,8 +17,11 @@ type UIState int
 
 const (
 	VIEW_LIST_PORTS UIState = iota
+	VIEW_SELECT_MODE
 	VIEW_SELECT_TESTS
 	VIEW_TEST_RUNNER
+	VIEW_SELECT_COMMANDS
+	VIEW_COMMAND_RUNNER
 	VIEW_LOADING
 )
 
@@ -50,6 +53,9 @@ type model struct {
 
 	// select tests internal state
 	selectedTests map[int]struct{}
+
+	// select commands internal state
+	selectedCommands map[int]struct{}
 
 	// test runner internal state
 	results []TestResult
@@ -125,6 +131,13 @@ var availableTests []commandAndDesc = []commandAndDesc{
 	{"Get Analog SD Card Update", globals.CMD_GET_ANALOG_SD_UPDATE},
 }
 
+var availableCommands []commandAndDesc = []commandAndDesc{
+	{"Select All", 0xFF},
+	{"Clear Analog SD", globals.CMD_CLEAR_ANALOG_SD},
+}
+
+var modeOptions = []string{"Run Tests", "Run Commands"}
+
 func StartApplication(portLister PortLister, connector PortConnector, logger *zap.Logger) {
 	if _, err := tea.NewProgram(initialModel(portLister, connector)).Run(); err != nil {
 		logger.Fatal("Error starting TUI program", zap.Error(err))
@@ -147,11 +160,12 @@ func initialModel(portLister PortLister, connector PortConnector) model {
 	s.Style = runningStyle
 
 	return model{
-		uiState:        VIEW_LIST_PORTS,
-		potentialPorts: ports,
-		connector:      connector,
-		selectedTests:  make(map[int]struct{}),
-		spinner:        s,
+		uiState:          VIEW_LIST_PORTS,
+		potentialPorts:   ports,
+		connector:        connector,
+		selectedTests:    make(map[int]struct{}),
+		selectedCommands: make(map[int]struct{}),
+		spinner:          s,
 	}
 }
 
@@ -188,10 +202,16 @@ func (m model) View() string {
 		s.WriteString(m.viewPortSelection())
 	case VIEW_LOADING:
 		s.WriteString(m.viewLoading())
+	case VIEW_SELECT_MODE:
+		s.WriteString(m.viewSelectMode())
 	case VIEW_SELECT_TESTS:
 		s.WriteString(m.viewSelectTests())
 	case VIEW_TEST_RUNNER:
 		s.WriteString(m.viewTestRunner())
+	case VIEW_SELECT_COMMANDS:
+		s.WriteString(m.viewSelectCommands())
+	case VIEW_COMMAND_RUNNER:
+		s.WriteString(m.viewCommandRunner())
 	}
 
 	return s.String()
@@ -325,6 +345,129 @@ func (m model) viewTestRunner() string {
 	// Footer hint - show restart option when tests are done
 	if completed == len(m.results) && len(m.results) > 0 {
 		s.WriteString(renderHint("  r run more tests • q quit"))
+	} else {
+		s.WriteString(renderHint("  q quit"))
+	}
+
+	return s.String()
+}
+
+func (m model) viewSelectMode() string {
+	var s strings.Builder
+
+	// Header
+	header := headerStyle.Render("▸ Select Mode")
+	s.WriteString(header + "\n\n")
+
+	// Mode options
+	for i, option := range modeOptions {
+		cursor := renderCursor(i == m.cursor)
+		optionName := option
+		if i == m.cursor {
+			optionName = selectedItemStyle.Render(option)
+		} else {
+			optionName = normalItemStyle.Render(option)
+		}
+		s.WriteString(fmt.Sprintf("  %s %s\n", cursor, optionName))
+	}
+
+	s.WriteString("\n")
+	s.WriteString(renderHint("  ↑/↓ navigate • enter select • q quit"))
+
+	return s.String()
+}
+
+func (m model) viewSelectCommands() string {
+	var s strings.Builder
+
+	// Header
+	header := headerStyle.Render("▸ Select Commands to Run")
+	s.WriteString(header + "\n\n")
+
+	// Command list with checkboxes
+	for i, cmd := range availableCommands {
+		cursor := renderCursor(i == m.cursor)
+		_, isSelected := m.selectedCommands[i]
+		checkbox := renderCheckbox(isSelected)
+
+		cmdName := cmd.commandName
+		if i == m.cursor {
+			cmdName = selectedItemStyle.Render(cmdName)
+		} else if isSelected {
+			cmdName = successStyle.Render(cmdName)
+		} else {
+			cmdName = normalItemStyle.Render(cmdName)
+		}
+
+		s.WriteString(fmt.Sprintf("  %s %s %s\n", cursor, checkbox, cmdName))
+	}
+
+	s.WriteString("\n")
+	s.WriteString(renderHint("  ↑/↓ navigate • space toggle • enter run • b back • q quit"))
+
+	return s.String()
+}
+
+func (m model) viewCommandRunner() string {
+	var s strings.Builder
+
+	// Count completed commands
+	completed := 0
+	succeeded := 0
+	for _, res := range m.results {
+		if res.Status == StatusPass || res.Status == StatusFail {
+			completed++
+			if res.Status == StatusPass {
+				succeeded++
+			}
+		}
+	}
+
+	// Just add a small top margin
+	s.WriteString("\n")
+
+	// Command results
+	for _, res := range m.results {
+		// Status icon + command name
+		icon := renderStatusIcon(res.Status, m.spinner.View())
+		name := renderTestName(res.Name, res.Status)
+		s.WriteString(fmt.Sprintf("  %s  %s\n", icon, name))
+
+		// Log entries with timestamps
+		if len(res.Logs) > 0 {
+			for _, log := range res.Logs {
+				timestamp := timestampStyle.Render(log.Timestamp.Format("15:04:05.000"))
+				content := strings.TrimSuffix(log.Content, "\n")
+
+				// Handle multi-line log content
+				lines := strings.Split(content, "\n")
+				for j, line := range lines {
+					if j == 0 {
+						s.WriteString(fmt.Sprintf("     %s  %s\n", timestamp, logContentStyle.Render(line)))
+					} else {
+						// Continuation lines without timestamp
+						s.WriteString(fmt.Sprintf("     %s  %s\n", strings.Repeat(" ", 12), logContentStyle.Render(line)))
+					}
+				}
+			}
+		}
+		s.WriteString("\n")
+	}
+
+	// Command summary
+	if completed == len(m.results) && len(m.results) > 0 {
+		// All commands done - show final summary
+		summaryStyle := successStyle
+		if succeeded != completed {
+			summaryStyle = errorStyle
+		}
+		s.WriteString(mutedStyle.Render("  "+strings.Repeat("─", 40)) + "\n")
+		s.WriteString(fmt.Sprintf("  %s\n\n", summaryStyle.Render(fmt.Sprintf("%d/%d commands succeeded", succeeded, len(m.results)))))
+	}
+
+	// Footer hint - show restart option when commands are done
+	if completed == len(m.results) && len(m.results) > 0 {
+		s.WriteString(renderHint("  r run more commands • b back to mode • q quit"))
 	} else {
 		s.WriteString(renderHint("  q quit"))
 	}

@@ -68,6 +68,37 @@ func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 	return res[0] == globals.CMD_ENTER_INSPECT
 }
 
+// ClearAnalogSDCommand clears the analog SD card data
+func ClearAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Clear Analog SD]: Entering inspect mode\n")
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Clear Analog SD]: Failed to enter inspect mode\n")
+		return false
+	}
+
+	fmt.Fprintf(log, "[Clear Analog SD]: sending command to clear analog SD card\n")
+
+	cmd := getDispatchCommand(globals.CMD_CLEAR_ANALOG_SD)
+	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Clear Analog SD]: Read timed out")
+		return false
+	}
+
+	streamReader := bytes.NewReader(res[:])
+	var freeSpace uint32
+	if err := binary.Read(streamReader, binary.LittleEndian, &freeSpace); err != nil {
+		fmt.Fprintf(log, "[Clear Analog SD]: Could not clear analog SD card\n")
+		return false
+	}
+
+	fmt.Fprintf(log, "[Clear Analog SD]: Clear command acknowledged. Free space is now: %d MB\n", freeSpace)
+
+	return true
+}
+
 // to verify that the SD card is working
 // 1. Check the current file size and the timestamp
 // 2. Return the system back to normal mode and wait for 10s
