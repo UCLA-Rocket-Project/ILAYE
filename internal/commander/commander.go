@@ -12,7 +12,7 @@ import (
 const COMMAND_SEQUENCE_SIZE = 3
 const COMMAND_BYTE_IDX = 2
 
-const SD_CARD_TEST_TIMEOUT = 10 * time.Second
+const SD_CARD_TEST_TIMEOUT = 5 * time.Second
 
 type SerialReaderWriter interface {
 	WriteSingleMessage(message []byte, size int)
