@@ -148,6 +148,11 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(availableTests)-1 {
 				m.cursor++
 			}
+		case "b":
+			// Go back to mode selection
+			m.uiState = VIEW_SELECT_MODE
+			m.cursor = 0
+			return m, nil
 		case " ":
 			if m.cursor == 0 {
 				if _, ok := m.selectedTests[m.cursor]; !ok {
@@ -248,20 +253,13 @@ func (m model) updateTestRunner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Only handle 'r' key when all tests are done
-	if allComplete {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "r":
-				// Reset and go back to test selection
-				m.uiState = VIEW_SELECT_TESTS
-				m.cursor = 0
-				m.selectedTests = make(map[int]struct{})
-				m.results = nil
-				return m, nil
-			}
-		}
+	// Auto-return to test selection when all tests are done
+	if allComplete && len(m.results) > 0 {
+		m.uiState = VIEW_SELECT_TESTS
+		m.cursor = 0
+		m.selectedTests = make(map[int]struct{})
+		m.results = nil
+		return m, nil
 	}
 
 	return m, nil
@@ -344,6 +342,8 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 					switch availableCommands[idx].opCode {
 					case globals.CMD_CLEAR_ANALOG_SD:
 						success = commander.ClearAnalogSDCommand(m.serial, w)
+					case globals.CMD_REMOVE_SEND_DELAY:
+						success = commander.RemoveDelayFromRadioCommand(m.serial, w)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
@@ -368,27 +368,13 @@ func (m model) updateCommandRunner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Only handle keys when all commands are done
-	if allComplete {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "r":
-				// Reset and go back to command selection
-				m.uiState = VIEW_SELECT_COMMANDS
-				m.cursor = 0
-				m.selectedCommands = make(map[int]struct{})
-				m.results = nil
-				return m, nil
-			case "b":
-				// Go back to mode selection
-				m.uiState = VIEW_SELECT_MODE
-				m.cursor = 0
-				m.selectedCommands = make(map[int]struct{})
-				m.results = nil
-				return m, nil
-			}
-		}
+	// Auto-return to command selection when all commands are done
+	if allComplete && len(m.results) > 0 {
+		m.uiState = VIEW_SELECT_COMMANDS
+		m.cursor = 0
+		m.selectedCommands = make(map[int]struct{})
+		m.results = nil
+		return m, nil
 	}
 
 	return m, nil

@@ -99,6 +99,27 @@ func ClearAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	return true
 }
 
+func RemoveDelayFromRadioCommand(conn SerialReaderWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Remove Radio Delay]: Entering inspect mode\n")
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Remove Radio Delay]: Failed to enter inspect mode\n")
+		return false
+	}
+
+	fmt.Fprintf(log, "[Remove Radio Delay]: sending command to remove radio delay\n")
+
+	cmd := getDispatchCommand(globals.CMD_REMOVE_SEND_DELAY)
+	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Remove Radio Delay]: Read timed out")
+		return false
+	}
+
+	return res[0] == globals.CMD_REMOVE_SEND_DELAY
+}
+
 // to verify that the SD card is working
 // 1. Check the current file size and the timestamp
 // 2. Return the system back to normal mode and wait for 10s
