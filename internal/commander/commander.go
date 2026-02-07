@@ -117,6 +117,12 @@ func RemoveDelayFromRadioCommand(conn SerialReaderWriter, log io.Writer) bool {
 		return false
 	}
 
+	fmt.Fprintf(log, "[Remove Radio Delay]: Returning to normal mode\n")
+	if !EnterNormalCommand(conn, log) {
+		fmt.Fprintf(log, "[Remove Radio Delay]: Failed to enter normal mode\n")
+		return false
+	}
+
 	return res[0] == globals.CMD_REMOVE_SEND_DELAY
 }
 
