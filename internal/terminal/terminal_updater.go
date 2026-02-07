@@ -222,6 +222,8 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.ClearAnalogSDCommand(m.serial, w)
 					case globals.CMD_GET_ANALOG_SD_UPDATE:
 						success = commander.CheckAnalogSDCommand(m.serial, w)
+					case globals.CMD_GET_ANALOG_LC_READING:
+						success = commander.CheckAnalogLCCommand(m.serial, w)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
