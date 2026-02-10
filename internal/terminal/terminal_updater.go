@@ -342,8 +342,8 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 					switch availableCommands[idx].opCode {
 					case globals.CMD_CLEAR_ANALOG_SD:
 						success = commander.ClearAnalogSDCommand(m.serial, w)
-					case globals.CMD_REMOVE_SEND_DELAY:
-						success = commander.RemoveDelayFromRadioCommand(m.serial, w)
+					case globals.CMD_ENTER_LAUNCH_MODE:
+						success = commander.EnterLaunchMode(m.serial, w)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}

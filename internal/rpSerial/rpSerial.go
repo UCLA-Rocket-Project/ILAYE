@@ -183,7 +183,7 @@ func (r *RpSerial) ReadSingleOrTimeout() ([]byte, error) {
 	case res := <-resultCh:
 		return res, nil
 	// timeout on the boards is 10 seconds
-	case <-time.After(12 * time.Second):
+	case <-time.After(15 * time.Second):
 		return nil, errors.New("read timeout")
 	}
 }

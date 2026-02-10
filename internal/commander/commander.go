@@ -99,16 +99,19 @@ func ClearAnalogSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	return true
 }
 
-func RemoveDelayFromRadioCommand(conn SerialReaderWriter, log io.Writer) bool {
-	fmt.Fprintf(log, "[Remove Radio Delay]: Entering inspect mode\n")
-	if !EnterInspectCommand(conn, log) {
-		fmt.Fprintf(log, "[Remove Radio Delay]: Failed to enter inspect mode\n")
+// switch back to normal operation, and send the launch flag
+// not sure how to get an ack here, since removing the launch flag means that the
+// radio and everything else would be saturated already
+func EnterLaunchMode(conn SerialReaderWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Remove Radio Delay]: Requesting return to normal mode\n")
+	if !EnterNormalCommand(conn, log) {
+		fmt.Fprintf(log, "[Remove Radio Delay]: Failed to enter normal mode\n")
 		return false
 	}
 
-	fmt.Fprintf(log, "[Remove Radio Delay]: sending command to remove radio delay\n")
+	fmt.Fprintf(log, "[Remove Radio Delay]: sending command to remove all delays\n")
 
-	cmd := getDispatchCommand(globals.CMD_REMOVE_SEND_DELAY)
+	cmd := getDispatchCommand(globals.CMD_ENTER_LAUNCH_MODE)
 	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
 
 	res, err := conn.ReadSingleOrTimeout()
@@ -117,13 +120,7 @@ func RemoveDelayFromRadioCommand(conn SerialReaderWriter, log io.Writer) bool {
 		return false
 	}
 
-	fmt.Fprintf(log, "[Remove Radio Delay]: Returning to normal mode\n")
-	if !EnterNormalCommand(conn, log) {
-		fmt.Fprintf(log, "[Remove Radio Delay]: Failed to enter normal mode\n")
-		return false
-	}
-
-	return res[0] == globals.CMD_REMOVE_SEND_DELAY
+	return res[0] == globals.CMD_ENTER_LAUNCH_MODE
 }
 
 // to verify that the SD card is working
