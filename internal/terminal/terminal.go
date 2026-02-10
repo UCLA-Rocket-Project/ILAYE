@@ -129,7 +129,7 @@ var availableTests []commandAndDesc = []commandAndDesc{
 	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
 	{"Get Analog SD Card Update", globals.CMD_GET_ANALOG_SD_UPDATE},
-	// {"Get Analog LC Reading", globals.CMD_GET_ANALOG_LC_READING},
+	{"Get Analog LC Reading", globals.CMD_GET_ANALOG_LC_READING},
 }
 
 var availableCommands []commandAndDesc = []commandAndDesc{
