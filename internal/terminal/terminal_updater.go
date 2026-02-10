@@ -229,6 +229,8 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.CheckAnalogSDCommand(m.serial, w)
 					case globals.CMD_GET_ANALOG_LC_READING:
 						success = commander.CheckAnalogLCCommand(m.serial, w)
+					case globals.CMD_GET_DIGITAL_SD_UPDATE:
+						success = commander.CheckDigitalSDCommand(m.serial, w)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
@@ -342,6 +344,8 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 					switch availableCommands[idx].opCode {
 					case globals.CMD_CLEAR_ANALOG_SD:
 						success = commander.ClearAnalogSDCommand(m.serial, w)
+					case globals.CMD_CLEAR_DIGITAL_SD:
+						success = commander.ClearDigitalSDCommand(m.serial, w)
 					case globals.CMD_ENTER_LAUNCH_MODE:
 						success = commander.EnterLaunchMode(m.serial, w)
 					}
