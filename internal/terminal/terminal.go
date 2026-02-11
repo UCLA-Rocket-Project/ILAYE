@@ -131,6 +131,9 @@ var availableTests []commandAndDesc = []commandAndDesc{
 	{"Get Analog SD Card Update", globals.CMD_GET_ANALOG_SD_UPDATE},
 	{"Get Analog LC Reading", globals.CMD_GET_ANALOG_LC_READING},
 	{"Get Digital SD Card Update", globals.CMD_GET_DIGITAL_SD_UPDATE},
+	{"Get Digital Altimeter Reading", globals.CMD_GET_ALTIMETER_READING},
+	{"Get Digital Shock 1 Reading", globals.CMD_GET_SHOCK_1_READING},
+	{"Get Digital IMU Reading", globals.CMD_GET_IMU_READING},
 }
 
 var availableCommands []commandAndDesc = []commandAndDesc{
