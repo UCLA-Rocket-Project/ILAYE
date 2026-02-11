@@ -137,7 +137,7 @@ var availableCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Clear Analog SD", globals.CMD_CLEAR_ANALOG_SD},
 	{"Clear Digital SD", globals.CMD_CLEAR_DIGITAL_SD},
-	{"Turn off radio delay flag to ready for launch", globals.CMD_ENTER_LAUNCH_MODE},
+	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
 }
 
 var modeOptions = []string{"Run Tests", "Run Commands"}
