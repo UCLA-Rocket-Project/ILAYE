@@ -231,6 +231,8 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.CheckAnalogLCCommand(m.serial, w)
 					case globals.CMD_GET_DIGITAL_SD_UPDATE:
 						success = commander.CheckDigitalSDCommand(m.serial, w)
+					case globals.CMD_GET_SHOCK_1_READING:
+						success = commander.CheckDigitalShockCmd(m.serial, w, commander.SHOCK_ACCEL_1)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}

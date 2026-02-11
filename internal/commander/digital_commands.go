@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+type ShockAccelNum byte
+
+const (
+	SHOCK_ACCEL_1 ShockAccelNum = globals.CMD_GET_SHOCK_1_READING
+	SHOCK_ACCEL_2 ShockAccelNum = globals.CMD_GET_SHOCK_2_READING
+)
+
 // tests
 func CheckDigitalSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	// enter inspect mode first
@@ -47,6 +54,54 @@ func CheckDigitalSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 	}
 
 	return firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp
+}
+
+type shockData struct {
+	AccX      float32
+	AccY      float32
+	AccZ      float32
+	Timestamp uint32
+}
+
+func CheckDigitalShockCmd(conn SerialReaderWriter, log io.Writer, shockAccelNum ShockAccelNum) bool {
+	var shockNum int
+
+	switch shockAccelNum {
+	case globals.CMD_GET_SHOCK_1_READING:
+		shockNum = 1
+	case globals.CMD_GET_SHOCK_2_READING:
+		shockNum = 2
+	}
+
+	fmt.Fprintf(log, "[Check Digital %d]: Entering inspect mode\n", shockNum)
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Check Digital %d]: Failed to enter inspect mode\n", shockNum)
+		return false
+	}
+
+	shockUpdateMessage := getDispatchCommand(byte(shockAccelNum))
+	conn.WriteSingleMessage(shockUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
+	fmt.Fprintf(log, "[Check Digital %d]: Sent command requesting Shock 1 update\n", shockNum)
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Check Digital %d]: Read timed out", shockNum)
+		return false
+	}
+	fmt.Fprintf(log, "[Check Digital %d]: Receieved response from boards of len %d\n", shockNum, len(res))
+	streamReader := bytes.NewReader(res[:])
+	var shockData shockData
+	if err := binary.Read(streamReader, binary.LittleEndian, &shockData); err != nil {
+		fmt.Fprintf(log, "[Check Digital %d]: Error decoding shock response\n", shockNum)
+		return false
+	}
+
+	fmt.Fprintf(
+		log,
+		"[Check Digital %d]: Timestamp: %d Shock data: %f, %f, %f\n",
+		shockNum, shockData.Timestamp, shockData.AccX, shockData.AccY, shockData.AccZ,
+	)
+	return true
 }
 
 // commands
