@@ -235,6 +235,8 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.CheckDigitalShockCmd(m.serial, w, commander.SHOCK_ACCEL_1)
 					case globals.CMD_GET_IMU_READING:
 						success = commander.CheckDigitalIMUCommand(m.serial, w)
+					case globals.CMD_GET_ALTIMETER_READING:
+						success = commander.CheckDigitalAltimeterCommand(m.serial, w)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}

@@ -140,10 +140,48 @@ func CheckDigitalIMUCommand(conn SerialReaderWriter, log io.Writer) bool {
 	}
 	fmt.Fprintf(
 		log,
-		"[Check Digital IMU]: \nTimestamp: %d, \nAccX %f, AccY %f, AccZ %f, \nGyrX %f, GyrY %f, GyrZ %f\n",
+		"[Check Digital IMU]: \nTimestamp: %d\nAccX %f, AccY %f, AccZ %f, \nGyrX %f, GyrY %f, GyrZ %f\n",
 		updateData.Timestamp,
 		updateData.AccX, updateData.AccY, updateData.AccZ,
 		updateData.GyrX, updateData.GyrY, updateData.GyrZ,
+	)
+
+	return true
+}
+
+type AltimeterData struct {
+	Temp      int32
+	Pressure  int32
+	Timestamp uint32
+}
+
+func CheckDigitalAltimeterCommand(conn SerialReaderWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Check Digital Altimeter]: Entering inspect mode\n")
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Check Digital Altimeter]: Failed to enter inspect mode\n")
+		return false
+	}
+
+	sdUpdateMessage := getDispatchCommand(globals.CMD_GET_ALTIMETER_READING)
+	conn.WriteSingleMessage(sdUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
+	fmt.Fprintf(log, "[Chceck Digital Altimeter]: Sent command requesting Altimeter update\n")
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Check Digital Altimeter]: Read timed out")
+		return false
+	}
+	fmt.Fprintf(log, "[Check Digital Altimeter]: Receieved response from boards\n")
+	streamReader := bytes.NewReader(res[:])
+	var updateData AltimeterData
+	if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
+		return false
+	}
+	fmt.Fprintf(
+		log,
+		"[Check Digital Altimeter]: \nTimestamp: %d\nTemp: %f, Pressure: %f",
+		updateData.Timestamp,
+		float32(updateData.Temp)/100, float32(updateData.Pressure)/100,
 	)
 
 	return true
