@@ -237,6 +237,8 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.CheckDigitalIMUCommand(m.serial, w)
 					case globals.CMD_GET_ALTIMETER_READING:
 						success = commander.CheckDigitalAltimeterCommand(m.serial, w)
+					case globals.CMD_GET_RADIO_SD_UPDATE:
+						success = commander.CheckRadioSDCommand(m.serial, w)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
@@ -352,6 +354,8 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.ClearAnalogSDCommand(m.serial, w)
 					case globals.CMD_CLEAR_DIGITAL_SD:
 						success = commander.ClearDigitalSDCommand(m.serial, w)
+					case globals.CMD_CLEAR_RADIO_SD:
+						success = commander.ClearRadioSDCommand(m.serial, w)
 					case globals.CMD_ENTER_LAUNCH_MODE:
 						success = commander.EnterLaunchMode(m.serial, w)
 					}

@@ -128,6 +128,7 @@ var availableTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	// {"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	// {"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
+	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
 	{"Get Analog SD Card Update", globals.CMD_GET_ANALOG_SD_UPDATE},
 	{"Get Analog LC Reading", globals.CMD_GET_ANALOG_LC_READING},
 	{"Get Digital SD Card Update", globals.CMD_GET_DIGITAL_SD_UPDATE},
@@ -138,6 +139,7 @@ var availableTests []commandAndDesc = []commandAndDesc{
 
 var availableCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
+	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
 	{"Clear Analog SD", globals.CMD_CLEAR_ANALOG_SD},
 	{"Clear Digital SD", globals.CMD_CLEAR_DIGITAL_SD},
 	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
