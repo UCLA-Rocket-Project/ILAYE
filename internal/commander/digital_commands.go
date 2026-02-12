@@ -98,9 +98,54 @@ func CheckDigitalShockCmd(conn SerialReaderWriter, log io.Writer, shockAccelNum 
 
 	fmt.Fprintf(
 		log,
-		"[Check Digital %d]: Timestamp: %d Shock data: %f, %f, %f\n",
+		"[Check Digital %d]: \nTimestamp: %d\nShock data: %f, %f, %f\n",
 		shockNum, shockData.Timestamp, shockData.AccX, shockData.AccY, shockData.AccZ,
 	)
+	return true
+}
+
+type IMUData struct {
+	AccX float32
+	AccY float32
+	AccZ float32
+
+	GyrX float32
+	GyrY float32
+	GyrZ float32
+
+	Timestamp uint32
+}
+
+func CheckDigitalIMUCommand(conn SerialReaderWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Check Digital IMU]: Entering inspect mode\n")
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Check Digital IMU]: Failed to enter inspect mode\n")
+		return false
+	}
+
+	sdUpdateMessage := getDispatchCommand(globals.CMD_GET_IMU_READING)
+	conn.WriteSingleMessage(sdUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
+	fmt.Fprintf(log, "[Chceck Digital IMU]: Sent command requesting IMU update\n")
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Check Digital IMU]: Read timed out")
+		return false
+	}
+	fmt.Fprintf(log, "[Check Digital IMU]: Receieved response from boards\n")
+	streamReader := bytes.NewReader(res[:])
+	var updateData IMUData
+	if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
+		return false
+	}
+	fmt.Fprintf(
+		log,
+		"[Check Digital IMU]: \nTimestamp: %d, \nAccX %f, AccY %f, AccZ %f, \nGyrX %f, GyrY %f, GyrZ %f\n",
+		updateData.Timestamp,
+		updateData.AccX, updateData.AccY, updateData.AccZ,
+		updateData.GyrX, updateData.GyrY, updateData.GyrZ,
+	)
+
 	return true
 }
 
