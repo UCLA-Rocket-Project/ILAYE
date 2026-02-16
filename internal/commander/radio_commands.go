@@ -46,7 +46,7 @@ func CheckRadioSDCommand(conn SerialReaderWriter, log io.Writer) bool {
 		return false
 	}
 
-	return firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp
+	return firstUpdate.FileSize <= secondUpdate.FileSize && firstUpdate.LastTimestamp <= secondUpdate.LastTimestamp
 }
 
 // Commands
