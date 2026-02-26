@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const COMMAND_SEQUENCE_SIZE = 3
+const COMMAND_SEQUENCE_SIZE = 4
 const COMMAND_BYTE_IDX = 2
 
 const SD_CARD_TEST_TIMEOUT = 5 * time.Second
@@ -20,7 +20,7 @@ type SerialReaderWriter interface {
 
 func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
 	// for consistency with terminal, use carraige return when sending back a command
-	return [COMMAND_SEQUENCE_SIZE]byte{cmd, '\r', '\n'}
+	return [COMMAND_SEQUENCE_SIZE]byte{cmd, '+', '+', '+'}
 }
 
 // to verify that the SD card is working
