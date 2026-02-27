@@ -356,6 +356,8 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.ClearDigitalSDCommand(m.serial, w)
 					case globals.CMD_CLEAR_RADIO_SD:
 						success = commander.ClearRadioSDCommand(m.serial, w)
+					case globals.CMD_JUMP_CLK:
+						success = commander.JumpClocks(m.serial, w)
 					case globals.CMD_ENTER_LAUNCH_MODE:
 						success = commander.EnterLaunchMode(m.serial, w)
 					}

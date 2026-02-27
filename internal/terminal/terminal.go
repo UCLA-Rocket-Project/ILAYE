@@ -142,6 +142,7 @@ var availableCommands []commandAndDesc = []commandAndDesc{
 	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
 	{"Clear Analog SD", globals.CMD_CLEAR_ANALOG_SD},
 	{"Clear Digital SD", globals.CMD_CLEAR_DIGITAL_SD},
+	{"Jump Clock", globals.CMD_JUMP_CLK},
 	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
 }
 

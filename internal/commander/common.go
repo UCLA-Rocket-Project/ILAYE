@@ -1,6 +1,7 @@
 package commander
 
 import (
+	"UCLA-Rocket-Project/ILAYE/internal/globals"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -52,4 +53,52 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer, command byte) *sdUpdate
 	fmt.Fprintf(log, "[SD Update]: file size: %d, last update timestamp: %d\n", updateData.FileSize, updateData.LastTimestamp)
 
 	return &updateData
+}
+
+type jumpClockUplinkPaylod struct {
+	CommandCode            uint8
+	CurrentTimeStampMicros int64
+}
+
+func JumpClocks(conn SerialReaderWriter, log io.Writer) bool {
+	// enter inspect mode first
+	fmt.Fprintf(log, "[Jump Clock]: Entering inspect mode\n")
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Jump Clock]: Failed to enter inspect mode\n")
+		return false
+	}
+
+	// Pre-allocate a slice of the exact size (e.g., 4 bytes for uint32 + 8 bytes for int64 = 12 bytes)
+	// do this rather than use a struct so that there would be no padding,
+	// since the receiver does not expect any padding
+	// add 3 for the command sequence at the end
+	messageBytes := make([]byte, 9+3)
+	// Pack the bytes manually (using Little Endian here)
+	clkMicro := time.Now().UnixMicro()
+	messageBytes[0] = byte(globals.CMD_JUMP_CLK)
+	binary.LittleEndian.PutUint64(messageBytes[1:9], uint64(clkMicro))
+	copy(messageBytes[9:12], []byte("+++"))
+	conn.WriteSingleMessage(messageBytes, len(messageBytes))
+
+	fmt.Fprintf(log, "[Jump Clock]: Inspect mode transition success, sending command to jump clock to %d\n", clkMicro)
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Jump Clock]: Read timed out")
+		return false
+	}
+
+	fmt.Fprintf(log, "[Jump Clock]: Receieved response from boards of len %d\n", len(res))
+	streamReader := bytes.NewReader(res[:])
+	var boardClock int64
+	if err := binary.Read(streamReader, binary.LittleEndian, &boardClock); err != nil {
+		fmt.Fprintf(log, "[Jump Clock]: Error decoding clock response\n")
+		return false
+	}
+
+	fmt.Fprintf(
+		log,
+		"[Jump Clock]: Radio board timestamp %d\n", boardClock,
+	)
+	return true
 }

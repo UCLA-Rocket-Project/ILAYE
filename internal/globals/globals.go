@@ -4,6 +4,7 @@ package globals
 const (
 	CMD_ENTER_NORMAL          = 0x00
 	CMD_ENTER_INSPECT         = 0x01
+	CMD_JUMP_CLK              = 0x0B
 	CMD_GET_RADIO_SD_UPDATE   = 0x20
 	CMD_CLEAR_RADIO_SD        = 0x2E
 	CMD_GET_ANALOG_SD_UPDATE  = 0xA0
