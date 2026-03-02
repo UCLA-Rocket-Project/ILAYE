@@ -126,8 +126,7 @@ type commandAndDesc struct {
 var logPool []string
 var availableTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
-	// {"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
-	// {"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
+	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
 	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
 	{"Get Analog SD Card Update", globals.CMD_GET_ANALOG_SD_UPDATE},
 	{"Get Analog LC Reading", globals.CMD_GET_ANALOG_LC_READING},
@@ -139,6 +138,8 @@ var availableTests []commandAndDesc = []commandAndDesc{
 
 var availableCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
+	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
+	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
 	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
 	{"Clear Analog SD", globals.CMD_CLEAR_ANALOG_SD},
 	{"Clear Digital SD", globals.CMD_CLEAR_DIGITAL_SD},

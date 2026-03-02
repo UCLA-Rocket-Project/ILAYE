@@ -219,12 +219,8 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 					success := false
 					// Map index to commander function
 					switch availableTests[idx].opCode {
-					case globals.CMD_ENTER_NORMAL:
-						success = commander.EnterNormalCommand(m.serial, w)
-					case globals.CMD_ENTER_INSPECT:
-						success = commander.EnterInspectCommand(m.serial, w)
-					case globals.CMD_CLEAR_ANALOG_SD:
-						success = commander.ClearAnalogSDCommand(m.serial, w)
+					case globals.CMD_TEST_SERIAL_CONN:
+						success = commander.TestSerialConnection(m.serial, w)
 					case globals.CMD_GET_ANALOG_SD_UPDATE:
 						success = commander.CheckAnalogSDCommand(m.serial, w)
 					case globals.CMD_GET_ANALOG_LC_READING:
@@ -350,6 +346,10 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					success := false
 					switch availableCommands[idx].opCode {
+					case globals.CMD_ENTER_NORMAL:
+						success = commander.EnterNormalCommand(m.serial, w)
+					case globals.CMD_ENTER_INSPECT:
+						success = commander.EnterInspectCommand(m.serial, w)
 					case globals.CMD_CLEAR_ANALOG_SD:
 						success = commander.ClearAnalogSDCommand(m.serial, w)
 					case globals.CMD_CLEAR_DIGITAL_SD:

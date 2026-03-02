@@ -80,3 +80,17 @@ func EnterLaunchMode(conn SerialReaderWriter, log io.Writer) bool {
 
 	return true
 }
+
+func TestSerialConnection(conn SerialReaderWriter, log io.Writer) bool {
+	fmt.Fprintf(log, "[Test Serial Connection]: Sending command to test serial connection\n")
+	cmd := getDispatchCommand(globals.CMD_TEST_SERIAL_CONN)
+	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Test Serial Connection]: Read timed out")
+		return false
+	}
+
+	return len(res) == 1 && res[0] == globals.CMD_TEST_SERIAL_CONN
+}
