@@ -48,6 +48,7 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer, command byte) *sdUpdate
 	streamReader := bytes.NewReader(res[:])
 	var updateData sdUpdate
 	if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
+		fmt.Fprintf(log, "[SD Update]: Could not decode board response, %s\n", err)
 		return nil
 	}
 	fmt.Fprintf(log, "[SD Update]: file size: %d, last update timestamp: %d\n", updateData.FileSize, updateData.LastTimestamp)
