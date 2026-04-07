@@ -221,20 +221,30 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 					switch availableTests[idx].opCode {
 					case globals.CMD_TEST_SERIAL_CONN:
 						success = commander.TestSerialConnection(m.serial, w)
-					case globals.CMD_GET_ANALOG_SD_UPDATE:
-						success = commander.CheckAnalogSDCommand(m.serial, w)
-					case globals.CMD_GET_ANALOG_LC_READING:
-						success = commander.CheckAnalogLCCommand(m.serial, w)
-					case globals.CMD_GET_DIGITAL_SD_UPDATE:
-						success = commander.CheckDigitalSDCommand(m.serial, w)
-					case globals.CMD_GET_SHOCK_1_READING:
-						success = commander.CheckDigitalShockCmd(m.serial, w, commander.SHOCK_ACCEL_1)
-					case globals.CMD_GET_IMU_READING:
-						success = commander.CheckDigitalIMUCommand(m.serial, w)
-					case globals.CMD_GET_ALTIMETER_READING:
-						success = commander.CheckDigitalAltimeterCommand(m.serial, w)
+					case globals.CMD_GET_ANALOG_V1_SD_UPDATE:
+						success = commander.InspectSDCards(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_SD_UPDATE, true)
+					// case globals.CMD_GET_ANALOG_LC_READING:
+					// 	success = commander.CheckAnalogLCCommand(m.serial, w)
+					case globals.CMD_GET_DIGITAL_V1_SD_UPDATE:
+						success = commander.InspectSDCards(m.serial, w, "Digital V1", globals.CMD_GET_DIGITAL_V1_SD_UPDATE, true)
+					case globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING:
+						success = commander.CheckDigitalShockCmd(m.serial, w, "V1", globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING)
+					case globals.CMD_GET_DIGITAL_V2_SHOCK_1_READING:
+						success = commander.CheckDigitalShockCmd(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_SHOCK_1_READING)
+					case globals.CMD_GET_DIGITAL_V2_SHOCK_2_READING:
+						success = commander.CheckDigitalShockCmd(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_SHOCK_2_READING)
+					case globals.CMD_GET_DIGITAL_V1_IMU_READING:
+						success = commander.CheckDigitalIMUCommand(m.serial, w, "V1", globals.CMD_GET_DIGITAL_V1_IMU_READING)
+					case globals.CMD_GET_DIGITAL_V2_IMU_READING:
+						success = commander.CheckDigitalIMUCommand(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_IMU_READING)
+					case globals.CMD_GET_DIGITAL_V1_ALTIMETER_READING:
+						success = commander.CheckDigitalAltimeterCommand(m.serial, w, "V1", globals.CMD_GET_DIGITAL_V1_ALTIMETER_READING)
+					case globals.CMD_GET_DIGITAL_V2_ALTIMETER_READING:
+						success = commander.CheckDigitalAltimeterCommand(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_ALTIMETER_READING)
+					case globals.CMD_GET_DIGITAL_V2_GPS_READING:
+						success = commander.CheckDigitalGPSCommand(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_GPS_READING)
 					case globals.CMD_GET_RADIO_SD_UPDATE:
-						success = commander.CheckRadioSDCommand(m.serial, w)
+						success = commander.InspectSDCards(m.serial, w, "Radio", globals.CMD_GET_RADIO_SD_UPDATE, false)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
@@ -350,12 +360,12 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.EnterNormalCommand(m.serial, w)
 					case globals.CMD_ENTER_INSPECT:
 						success = commander.EnterInspectCommand(m.serial, w)
-					case globals.CMD_CLEAR_ANALOG_SD:
-						success = commander.ClearAnalogSDCommand(m.serial, w)
-					case globals.CMD_CLEAR_DIGITAL_SD:
-						success = commander.ClearDigitalSDCommand(m.serial, w)
+					case globals.CMD_CLEAR_ANALOG_V1_SD:
+						success = commander.ClearSDCard(m.serial, w, "Analog V1", globals.CMD_CLEAR_ANALOG_V1_SD)
+					case globals.CMD_CLEAR_DIGITAL_V1_SD:
+						success = commander.ClearSDCard(m.serial, w, "Digital V1", globals.CMD_CLEAR_DIGITAL_V1_SD)
 					case globals.CMD_CLEAR_RADIO_SD:
-						success = commander.ClearRadioSDCommand(m.serial, w)
+						success = commander.ClearSDCard(m.serial, w, "Radio", globals.CMD_CLEAR_RADIO_SD)
 					case globals.CMD_JUMP_CLK:
 						success = commander.JumpClocks(m.serial, w)
 					case globals.CMD_ENTER_LAUNCH_MODE:

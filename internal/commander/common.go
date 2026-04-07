@@ -103,3 +103,72 @@ func JumpClocks(conn SerialReaderWriter, log io.Writer) bool {
 	)
 	return true
 }
+
+func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, command byte, checkMoreThanZero bool) bool {
+	fmt.Fprintf(log, "[Check %s SD]: Entering inspect mode\n", boardType)
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Check %s SD]: Failed to enter inspect mode\n", boardType)
+		return false
+	}
+
+	fmt.Fprintf(log, "[Check %s SD]: Dispatching sd card checker\n", boardType)
+	firstUpdate := getSDUpdate(conn, log, command)
+
+	if firstUpdate == nil {
+		return false
+	}
+
+	fmt.Fprintf(log, "[Check %s SD]: Entering normal mode\n", boardType)
+	if !EnterNormalCommand(conn, log) {
+		fmt.Fprintf(log, "[Check %s SD]: Failed to enter normal mode\n", boardType)
+		return false
+	}
+
+	time.Sleep(SD_CARD_TEST_TIMEOUT)
+	fmt.Fprintf(log, "[Check %s SD]: Entering inspect mode\n", boardType)
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Check %s SD]: Failed to enter inspect mode\n", boardType)
+		return false
+	}
+
+	time.Sleep(1 * time.Second)
+	fmt.Fprintf(log, "[Check %s SD]: Dispatching sd card checker again\n", boardType)
+	secondUpdate := getSDUpdate(conn, log, command)
+
+	if secondUpdate == nil {
+		return false
+	}
+
+	return (checkMoreThanZero && firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp) ||
+		(firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
+}
+
+func ClearSDCard(conn SerialReaderWriter, log io.Writer, boardType string, command byte) bool {
+	fmt.Fprintf(log, "[Clear %s SD]: Entering inspect mode\n", boardType)
+	if !EnterInspectCommand(conn, log) {
+		fmt.Fprintf(log, "[Clear %s SD]: Failed to enter inspect mode\n", boardType)
+		return false
+	}
+
+	fmt.Fprintf(log, "[Clear %s SD]: sending command to clear %s SD card\n", boardType, boardType)
+
+	cmd := getDispatchCommand(command)
+	conn.WriteSingleMessage(cmd[:], COMMAND_SEQUENCE_SIZE)
+
+	res, err := conn.ReadSingleOrTimeout()
+	if err != nil {
+		fmt.Fprintf(log, "[Clear %s SD]: Read timed out", boardType)
+		return false
+	}
+
+	streamReader := bytes.NewReader(res[:])
+	var freeSpace uint32
+	if err := binary.Read(streamReader, binary.LittleEndian, &freeSpace); err != nil {
+		fmt.Fprintf(log, "[Clear %s SD]: Could not clear %s SD card\n", boardType, boardType)
+		return false
+	}
+
+	fmt.Fprintf(log, "[Clear %s SD]: Clear command acknowledged. Free space is now: %d MB\n", boardType, freeSpace)
+
+	return true
+}
