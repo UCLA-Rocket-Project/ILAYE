@@ -30,8 +30,8 @@ func getDispatchCommand(cmd byte) [COMMAND_SEQUENCE_SIZE]byte {
 // 3. Send the system back into inspect mode
 // 4. Check the new file size and timestamp, it should be bigger than the previous one
 type sdUpdate struct {
+	LastTimestamp int64
 	FileSize      uint32
-	LastTimestamp uint32
 }
 
 func getSDUpdate(conn SerialReaderWriter, log io.Writer, command byte) *sdUpdate {
@@ -104,7 +104,7 @@ func JumpClocks(conn SerialReaderWriter, log io.Writer) bool {
 	return true
 }
 
-func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, command byte, checkMoreThanZero bool) bool {
+func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, command byte) bool {
 	fmt.Fprintf(log, "[Check %s SD]: Entering inspect mode\n", boardType)
 	if !EnterInspectCommand(conn, log) {
 		fmt.Fprintf(log, "[Check %s SD]: Failed to enter inspect mode\n", boardType)
@@ -139,8 +139,7 @@ func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, co
 		return false
 	}
 
-	// set checkMoreThanZero to false when you dont expect any writes to have occurred --> e.g. on the radio board SD card
-	return !checkMoreThanZero || (firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
+	return (firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
 }
 
 func ClearSDCard(conn SerialReaderWriter, log io.Writer, boardType string, command byte) bool {

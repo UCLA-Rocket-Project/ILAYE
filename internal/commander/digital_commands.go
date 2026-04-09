@@ -11,10 +11,9 @@ import (
 type ShockAccelNum byte
 
 type shockData struct {
-	AccX      float32
-	AccY      float32
-	AccZ      float32
-	Timestamp uint32
+	AccX float32
+	AccY float32
+	AccZ float32
 }
 
 func CheckDigitalShockCmd(conn SerialReaderWriter, log io.Writer, digitalBoardVersion string, command byte) bool {
@@ -53,8 +52,8 @@ func CheckDigitalShockCmd(conn SerialReaderWriter, log io.Writer, digitalBoardVe
 
 	fmt.Fprintf(
 		log,
-		"[Check Digital %s Shock %d]: \nTimestamp: %d\nShock data: %f, %f, %f\n",
-		digitalBoardVersion, shockNum, shockData.Timestamp, shockData.AccX, shockData.AccY, shockData.AccZ,
+		"[Check Digital %s Shock %d]: \nShock data: %f, %f, %f\n",
+		digitalBoardVersion, shockNum, shockData.AccX, shockData.AccY, shockData.AccZ,
 	)
 	return true
 }
@@ -171,7 +170,7 @@ func CheckDigitalGPSCommand(conn SerialReaderWriter, log io.Writer, digitalBoard
 	}
 	fmt.Fprintf(
 		log,
-		"[Check Digital %s GPS]: Lat %d Long %d",
+		"[Check Digital %s GPS]: Lat: %d Long: %d",
 		digitalBoardVersion,
 		updateData.Lat, updateData.Long,
 	)

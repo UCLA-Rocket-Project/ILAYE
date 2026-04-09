@@ -222,11 +222,13 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case globals.CMD_TEST_SERIAL_CONN:
 						success = commander.TestSerialConnection(m.serial, w)
 					case globals.CMD_GET_ANALOG_V1_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_SD_UPDATE, true)
+						success = commander.InspectSDCards(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_SD_UPDATE)
+					case globals.CMD_GET_ANALOG_V2_SD_UPDATE:
+						success = commander.InspectSDCards(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_SD_UPDATE)
 					// case globals.CMD_GET_ANALOG_LC_READING:
 					// 	success = commander.CheckAnalogLCCommand(m.serial, w)
 					case globals.CMD_GET_DIGITAL_V1_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Digital V1", globals.CMD_GET_DIGITAL_V1_SD_UPDATE, true)
+						success = commander.InspectSDCards(m.serial, w, "Digital V1", globals.CMD_GET_DIGITAL_V1_SD_UPDATE)
 					case globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING:
 						success = commander.CheckDigitalShockCmd(m.serial, w, "V1", globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING)
 					case globals.CMD_GET_DIGITAL_V2_SHOCK_1_READING:
@@ -243,8 +245,10 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.CheckDigitalAltimeterCommand(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_ALTIMETER_READING)
 					case globals.CMD_GET_DIGITAL_V2_GPS_READING:
 						success = commander.CheckDigitalGPSCommand(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_GPS_READING)
+					case globals.CMD_GET_DIGITAL_V2_SD_UPDATE:
+						success = commander.InspectSDCards(m.serial, w, "Digital V2", globals.CMD_GET_DIGITAL_V2_SD_UPDATE)
 					case globals.CMD_GET_RADIO_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Radio", globals.CMD_GET_RADIO_SD_UPDATE, false)
+						success = commander.InspectRadioSDCard(m.serial, w, "Radio", globals.CMD_GET_RADIO_SD_UPDATE)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}
