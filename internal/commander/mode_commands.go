@@ -21,7 +21,7 @@ func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 	if res[0] == globals.CMD_ENTER_NORMAL {
 		fmt.Fprintf(log, "[Enter Normal Command]: Normal mode transition acknowledged\n")
 	} else {
-		fmt.Fprintf(log, "[Enter Normal Command]: Could not enter normal mode")
+		fmt.Fprintf(log, "[Enter Normal Command]: Could not enter normal mode. The bad command was %d", res[0])
 	}
 
 	return res[0] == globals.CMD_ENTER_NORMAL

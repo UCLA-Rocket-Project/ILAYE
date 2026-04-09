@@ -139,8 +139,8 @@ func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, co
 		return false
 	}
 
-	return (checkMoreThanZero && firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp) ||
-		(firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
+	// set checkMoreThanZero to false when you dont expect any writes to have occurred --> e.g. on the radio board SD card
+	return !checkMoreThanZero || (firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
 }
 
 func ClearSDCard(conn SerialReaderWriter, log io.Writer, boardType string, command byte) bool {
