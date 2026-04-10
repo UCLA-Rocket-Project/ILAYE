@@ -368,6 +368,10 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.ClearSDCard(m.serial, w, "Analog V1", globals.CMD_CLEAR_ANALOG_V1_SD)
 					case globals.CMD_CLEAR_DIGITAL_V1_SD:
 						success = commander.ClearSDCard(m.serial, w, "Digital V1", globals.CMD_CLEAR_DIGITAL_V1_SD)
+					case globals.CMD_CLEAR_ANALOG_V2_SD:
+						success = commander.ClearSDCard(m.serial, w, "Analog V2", globals.CMD_CLEAR_ANALOG_V2_SD)
+					case globals.CMD_CLEAR_DIGITAL_V2_SD:
+						success = commander.ClearSDCard(m.serial, w, "Digital V2", globals.CMD_CLEAR_DIGITAL_V2_SD)
 					case globals.CMD_CLEAR_RADIO_SD:
 						success = commander.ClearSDCard(m.serial, w, "Radio", globals.CMD_CLEAR_RADIO_SD)
 					case globals.CMD_JUMP_CLK:
