@@ -21,6 +21,7 @@ func CheckDigitalShockCmd(conn SerialReaderWriter, log io.Writer, digitalBoardVe
 
 	switch command {
 	case globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING:
+		shockNum = 1
 	case globals.CMD_GET_DIGITAL_V2_SHOCK_1_READING:
 		shockNum = 1
 	case globals.CMD_GET_DIGITAL_V2_SHOCK_2_READING:
