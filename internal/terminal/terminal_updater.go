@@ -223,8 +223,12 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.TestSerialConnection(m.serial, w)
 					case globals.CMD_GET_ANALOG_V1_SD_UPDATE:
 						success = commander.InspectSDCards(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_SD_UPDATE)
+					case globals.CMD_GET_ANALOG_V1_PT_READING:
+						success = commander.CheckAnalogPTCommand(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_PT_READING)
 					case globals.CMD_GET_ANALOG_V2_SD_UPDATE:
 						success = commander.InspectSDCards(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_SD_UPDATE)
+					case globals.CMD_GET_ANALOG_V2_PT_READING:
+						success = commander.CheckAnalogPTCommand(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_PT_READING)
 					// case globals.CMD_GET_ANALOG_LC_READING:
 					// 	success = commander.CheckAnalogLCCommand(m.serial, w)
 					case globals.CMD_GET_DIGITAL_V1_SD_UPDATE:
