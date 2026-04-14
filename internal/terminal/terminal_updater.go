@@ -100,7 +100,7 @@ func (m model) updateLoading(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case connectionSuccessMsg:
 		m.serial = msg
 		m.cursor = 0
-		m.uiState = VIEW_SELECT_MODE
+		m.uiState = VIEW_SELECT_SECTION
 		return m, nil
 	case connectionErrorMsg:
 		m.err = msg
@@ -122,10 +122,19 @@ func (m model) updateSelectMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(modeOptions)-1 {
 				m.cursor++
 			}
+		case "p":
+			// Go back to section selection
+			m.uiState = VIEW_SELECT_SECTION
+			m.cursor = 0
+			return m, nil
 		case "enter":
 			m.selectedMode = m.cursor
+			if m.selectedMode == 0 {
+				m.uiState = VIEW_SELECT_TESTS
+			} else {
+				m.uiState = VIEW_SELECT_COMMANDS
+			}
 			m.cursor = 0
-			m.uiState = VIEW_SELECT_SECTION
 			return m, nil
 		}
 	}
@@ -144,10 +153,6 @@ func (m model) updateSelectSection(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < 1 {
 				m.cursor++
 			}
-		case "b":
-			m.uiState = VIEW_SELECT_MODE
-			m.cursor = 0
-			return m, nil
 		case "enter":
 			if m.cursor == 0 {
 				m.selectedSection = SECTION_NOSE_CONE
@@ -155,11 +160,7 @@ func (m model) updateSelectSection(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedSection = SECTION_BODY_TUBE
 			}
 			m.cursor = 0
-			if m.selectedMode == 0 {
-				m.uiState = VIEW_SELECT_TESTS
-			} else {
-				m.uiState = VIEW_SELECT_COMMANDS
-			}
+			m.uiState = VIEW_SELECT_MODE
 			return m, nil
 		}
 	}
@@ -186,6 +187,12 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "b":
+			// Go back to mode selection
+			m.uiState = VIEW_SELECT_MODE
+			m.cursor = 0
+			m.selectedTests = make(map[int]struct{})
+			return m, nil
+		case "p":
 			// Go back to section selection
 			m.uiState = VIEW_SELECT_SECTION
 			m.cursor = 0
@@ -351,6 +358,12 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "b":
+			// Go back to mode selection
+			m.uiState = VIEW_SELECT_MODE
+			m.cursor = 0
+			m.selectedCommands = make(map[int]struct{})
+			return m, nil
+		case "p":
 			// Go back to section selection
 			m.uiState = VIEW_SELECT_SECTION
 			m.cursor = 0

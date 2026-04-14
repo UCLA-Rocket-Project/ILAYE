@@ -142,6 +142,7 @@ var logPool []string
 // Nose Cone tests
 var noseConTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
+	{"--- GENERAL ---", FILLER_WHITESPACE},
 	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
 	{"--- RADIO ---", FILLER_WHITESPACE},
 	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
@@ -157,6 +158,7 @@ var noseConTests []commandAndDesc = []commandAndDesc{
 // Body Tube tests
 var bodyTubeTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
+	{"--- GENERAL ---", FILLER_WHITESPACE},
 	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
 	{"--- RADIO ---", FILLER_WHITESPACE},
 	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
@@ -176,6 +178,7 @@ var bodyTubeTests []commandAndDesc = []commandAndDesc{
 // Nose Cone commands
 var noseConeCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
+	{"--- GENERAL ---", FILLER_WHITESPACE},
 	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
 	{"Jump Clock", globals.CMD_JUMP_CLK},
@@ -189,6 +192,7 @@ var noseConeCommands []commandAndDesc = []commandAndDesc{
 // Body Tube commands
 var bodyTubeCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
+	{"--- GENERAL ---", FILLER_WHITESPACE},
 	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
 	{"Jump Clock", globals.CMD_JUMP_CLK},
@@ -342,11 +346,7 @@ func (m model) viewLoading() string {
 func (m model) viewSelectSection() string {
 	var s strings.Builder
 
-	sectionLabel := "Tests"
-	if m.selectedMode == 1 {
-		sectionLabel = "Commands"
-	}
-	header := headerStyle.Render(fmt.Sprintf("▸ Select Rocket Section (%s)", sectionLabel))
+	header := headerStyle.Render("▸ Select Rocket Section")
 	s.WriteString(header + "\n\n")
 
 	// Nose cone color
@@ -402,7 +402,7 @@ func (m model) viewSelectSection() string {
 	s.WriteString(structColor.Render("  ||____|     |______________") + "\n")
 
 	s.WriteString("\n")
-	s.WriteString(renderHint("  ↑/↓ navigate • enter select • b back • q quit"))
+	s.WriteString(renderHint("  ↑/↓ navigate • enter select • q quit"))
 
 	return s.String()
 }
@@ -448,7 +448,7 @@ func (m model) viewSelectTests() string {
 	}
 
 	s.WriteString("\n")
-	s.WriteString(renderHint("  ↑/↓ navigate • space toggle • enter run • b back • q quit"))
+	s.WriteString(renderHint("  ↑/↓ navigate • space toggle • enter run • b back to test/command • p back to section selection • q quit"))
 
 	return s.String()
 }
@@ -540,7 +540,7 @@ func (m model) viewSelectMode() string {
 	}
 
 	s.WriteString("\n")
-	s.WriteString(renderHint("  ↑/↓ navigate • enter select • q quit"))
+	s.WriteString(renderHint("  ↑/↓ navigate • enter select • p back to section selection • q quit"))
 
 	return s.String()
 }
@@ -586,7 +586,7 @@ func (m model) viewSelectCommands() string {
 	}
 
 	s.WriteString("\n")
-	s.WriteString(renderHint("  ↑/↓ navigate • space toggle • enter run • b back • q quit"))
+	s.WriteString(renderHint("  ↑/↓ navigate • space toggle • enter run • b back to test/command • p back to section selection • q quit"))
 
 	return s.String()
 }
