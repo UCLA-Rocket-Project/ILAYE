@@ -18,11 +18,19 @@ type UIState int
 const (
 	VIEW_LIST_PORTS UIState = iota
 	VIEW_SELECT_MODE
+	VIEW_SELECT_SECTION
 	VIEW_SELECT_TESTS
 	VIEW_TEST_RUNNER
 	VIEW_SELECT_COMMANDS
 	VIEW_COMMAND_RUNNER
 	VIEW_LOADING
+)
+
+type RocketSection int
+
+const (
+	SECTION_NOSE_CONE RocketSection = iota
+	SECTION_BODY_TUBE
 )
 
 type SerialReaderWriter interface {
@@ -50,6 +58,10 @@ type model struct {
 	portName       string
 	connector      PortConnector
 	serial         SerialReaderWriter
+
+	// rocket section selection
+	selectedSection RocketSection
+	selectedMode    int // 0 = tests, 1 = commands
 
 	// select tests internal state
 	selectedTests map[int]struct{}
@@ -124,14 +136,12 @@ type commandAndDesc struct {
 }
 
 var logPool []string
-var availableTests []commandAndDesc = []commandAndDesc{
+
+// Nose Cone tests (digital boards)
+var noseConTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
 	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
-	{"Get Analog V1 SD Card Update", globals.CMD_GET_ANALOG_V1_SD_UPDATE},
-	{"Get Analog V1 PT Reading", globals.CMD_GET_ANALOG_V1_PT_READING},
-	{"Get Analog V2 SD Card Update", globals.CMD_GET_ANALOG_V2_SD_UPDATE},
-	{"Get Analog V2 PT Reading", globals.CMD_GET_ANALOG_V2_PT_READING},
 	{"Get Digital V1 SD Card Update", globals.CMD_GET_DIGITAL_V1_SD_UPDATE},
 	{"Get Digital V1 Altimeter Reading", globals.CMD_GET_DIGITAL_V1_ALTIMETER_READING},
 	{"Get Digital V1 Shock 1 Reading", globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING},
@@ -144,17 +154,55 @@ var availableTests []commandAndDesc = []commandAndDesc{
 	{"Get Digital V2 GPS Reading", globals.CMD_GET_DIGITAL_V2_GPS_READING},
 }
 
-var availableCommands []commandAndDesc = []commandAndDesc{
+// Body Tube tests (analog boards)
+var bodyTubeTests []commandAndDesc = []commandAndDesc{
+	{"Select All", 0xFF},
+	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
+	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
+	{"Get Analog V1 SD Card Update", globals.CMD_GET_ANALOG_V1_SD_UPDATE},
+	{"Get Analog V1 PT Reading", globals.CMD_GET_ANALOG_V1_PT_READING},
+	{"Get Analog V2 SD Card Update", globals.CMD_GET_ANALOG_V2_SD_UPDATE},
+	{"Get Analog V2 PT Reading", globals.CMD_GET_ANALOG_V2_PT_READING},
+}
+
+// Nose Cone commands (digital boards)
+var noseConeCommands []commandAndDesc = []commandAndDesc{
+	{"Select All", 0xFF},
+	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
+	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
+	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
+	{"Clear Digital V1 SD", globals.CMD_CLEAR_DIGITAL_V1_SD},
+	{"Clear Digital V2 SD", globals.CMD_CLEAR_DIGITAL_V2_SD},
+	{"Jump Clock", globals.CMD_JUMP_CLK},
+	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
+}
+
+// Body Tube commands (analog boards)
+var bodyTubeCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
 	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
 	{"Clear Analog V1 SD", globals.CMD_CLEAR_ANALOG_V1_SD},
 	{"Clear Analog V2 SD", globals.CMD_CLEAR_ANALOG_V2_SD},
-	{"Clear Digital V1 SD", globals.CMD_CLEAR_DIGITAL_V1_SD},
-	{"Clear Digital V2 SD", globals.CMD_CLEAR_DIGITAL_V2_SD},
 	{"Jump Clock", globals.CMD_JUMP_CLK},
 	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
+}
+
+// Helper to get the active test list based on selected section
+func (m model) activeTests() []commandAndDesc {
+	if m.selectedSection == SECTION_NOSE_CONE {
+		return noseConTests
+	}
+	return bodyTubeTests
+}
+
+// Helper to get the active command list based on selected section
+func (m model) activeCommands() []commandAndDesc {
+	if m.selectedSection == SECTION_NOSE_CONE {
+		return noseConeCommands
+	}
+	return bodyTubeCommands
 }
 
 var modeOptions = []string{"Run Tests", "Run Commands"}
@@ -225,6 +273,8 @@ func (m model) View() string {
 		s.WriteString(m.viewLoading())
 	case VIEW_SELECT_MODE:
 		s.WriteString(m.viewSelectMode())
+	case VIEW_SELECT_SECTION:
+		s.WriteString(m.viewSelectSection())
 	case VIEW_SELECT_TESTS:
 		s.WriteString(m.viewSelectTests())
 	case VIEW_TEST_RUNNER:
@@ -275,15 +325,91 @@ func (m model) viewLoading() string {
 	return s.String()
 }
 
+func (m model) viewSelectSection() string {
+	var s strings.Builder
+
+	sectionLabel := "Tests"
+	if m.selectedMode == 1 {
+		sectionLabel = "Commands"
+	}
+	header := headerStyle.Render(fmt.Sprintf("▸ Select Rocket Section (%s)", sectionLabel))
+	s.WriteString(header + "\n\n")
+
+	// Nose cone color
+	noseColor := mutedStyle
+	if m.cursor == 0 {
+		noseColor = lipgloss.NewStyle().Foreground(colorHighlight).Bold(true)
+	}
+
+	// Body tube color
+	bodyColor := mutedStyle
+	if m.cursor == 1 {
+		bodyColor = lipgloss.NewStyle().Foreground(colorHighlight).Bold(true)
+	}
+
+	// Structural color (always visible)
+	structColor := mutedStyle
+
+	// Launch rail runs along the left side of the rocket
+	rail := structColor.Render("  ||  ")
+
+	// Aerospike
+	railWhiteSpace := structColor.Render("      ")
+	s.WriteString(railWhiteSpace + noseColor.Render("     |") + "\n")
+
+	// ASCII Rocket Art - Nose Cone (top)
+	s.WriteString(rail + noseColor.Render("    / \\") + "\n")
+	s.WriteString(rail + noseColor.Render("   /   \\") + "\n")
+	s.WriteString(rail + noseColor.Render("  /     \\") + "\n")
+	s.WriteString(rail + noseColor.Render(" /_______\\") + "\n")
+	s.WriteString(rail + noseColor.Render("|         |") + "\n")
+	s.WriteString(rail + noseColor.Render("|    A    |") + "      " + renderSectionLabel(m.cursor == 0, "Digital Boards") + "\n")
+	s.WriteString(rail + noseColor.Render("|    R    |") + "\n")
+	s.WriteString(rail + noseColor.Render("|    E    |") + "\n")
+	s.WriteString(rail + noseColor.Render("|    S    |") + "\n")
+	s.WriteString(rail + noseColor.Render("|         |") + "\n")
+	s.WriteString(rail + noseColor.Render("|  25-26  |") + "\n")
+
+	// Separator between sections
+	s.WriteString(rail + structColor.Render("|_________|") + "\n")
+	s.WriteString(rail + structColor.Render("|_________|") + "\n")
+
+	// ASCII Rocket Art - Body Tube (bottom)
+	s.WriteString(rail + bodyColor.Render("|         |") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    P    |") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    A    |") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    N    |") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    D    |") + "      " + renderSectionLabel(m.cursor == 1, "Analog Boards") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    O    |") + "\n")
+	s.WriteString(structColor.Render("  || ") + bodyColor.Render("/|    R    |\\") + "\n")
+	s.WriteString(structColor.Render("  ||") + bodyColor.Render("/ |    A    | \\") + "\n")
+	s.WriteString(structColor.Render("  ") + bodyColor.Render("/___|_________|___\\") + "\n")
+	s.WriteString(rail + bodyColor.Render("|:::::::::|") + "\n")
+	s.WriteString(rail + bodyColor.Render(" \\:::::::/") + "\n")
+	s.WriteString(rail + bodyColor.Render("  ||   ||") + "\n")
+	s.WriteString(structColor.Render("  ||____|     |______________") + "\n")
+
+	s.WriteString("\n")
+	s.WriteString(renderHint("  ↑/↓ navigate • enter select • b back • q quit"))
+
+	return s.String()
+}
+
 func (m model) viewSelectTests() string {
 	var s strings.Builder
 
-	// Header
-	header := headerStyle.Render("▸ Select Tests to Run")
+	// Header with section context
+	sectionName := "Nose Cone"
+	if m.selectedSection == SECTION_BODY_TUBE {
+		sectionName = "Body Tube"
+	}
+	header := headerStyle.Render(fmt.Sprintf("▸ Select Tests to Run (%s)", sectionName))
 	s.WriteString(header + "\n\n")
 
+	tests := m.activeTests()
+
 	// Test list with checkboxes
-	for i, test := range availableTests {
+	for i, test := range tests {
 		cursor := renderCursor(i == m.cursor)
 		_, isSelected := m.selectedTests[i]
 		checkbox := renderCheckbox(isSelected)
@@ -401,12 +527,18 @@ func (m model) viewSelectMode() string {
 func (m model) viewSelectCommands() string {
 	var s strings.Builder
 
-	// Header
-	header := headerStyle.Render("▸ Select Commands to Run")
+	// Header with section context
+	sectionName := "Nose Cone"
+	if m.selectedSection == SECTION_BODY_TUBE {
+		sectionName = "Body Tube"
+	}
+	header := headerStyle.Render(fmt.Sprintf("▸ Select Commands to Run (%s)", sectionName))
 	s.WriteString(header + "\n\n")
 
+	commands := m.activeCommands()
+
 	// Command list with checkboxes
-	for i, cmd := range availableCommands {
+	for i, cmd := range commands {
 		cursor := renderCursor(i == m.cursor)
 		_, isSelected := m.selectedCommands[i]
 		checkbox := renderCheckbox(isSelected)

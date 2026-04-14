@@ -148,3 +148,13 @@ func renderTestName(name string, status TestStatus) string {
 func renderHint(text string) string {
 	return hintStyle.Render(text)
 }
+
+func renderSectionLabel(active bool, label string) string {
+	if active {
+		return lipgloss.NewStyle().
+			Foreground(colorHighlight).
+			Bold(true).
+			Render("◀ " + label)
+	}
+	return mutedStyle.Render("  " + label)
+}

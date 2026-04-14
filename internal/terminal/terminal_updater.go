@@ -56,6 +56,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLoading(msg)
 	case VIEW_SELECT_MODE:
 		return m.updateSelectMode(msg)
+	case VIEW_SELECT_SECTION:
+		return m.updateSelectSection(msg)
 	case VIEW_SELECT_TESTS:
 		return m.updateSelectTests(msg)
 	case VIEW_TEST_RUNNER:
@@ -121,13 +123,41 @@ func (m model) updateSelectMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "enter":
-			selectedMode := m.cursor
+			m.selectedMode = m.cursor
 			m.cursor = 0
-			if selectedMode == 0 {
-				// Run Tests selected
+			m.uiState = VIEW_SELECT_SECTION
+			return m, nil
+		}
+	}
+	return m, nil
+}
+
+func (m model) updateSelectSection(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down":
+			if m.cursor < 1 {
+				m.cursor++
+			}
+		case "b":
+			m.uiState = VIEW_SELECT_MODE
+			m.cursor = 0
+			return m, nil
+		case "enter":
+			if m.cursor == 0 {
+				m.selectedSection = SECTION_NOSE_CONE
+			} else {
+				m.selectedSection = SECTION_BODY_TUBE
+			}
+			m.cursor = 0
+			if m.selectedMode == 0 {
 				m.uiState = VIEW_SELECT_TESTS
 			} else {
-				// Run Commands selected
 				m.uiState = VIEW_SELECT_COMMANDS
 			}
 			return m, nil
@@ -137,6 +167,7 @@ func (m model) updateSelectMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
+	tests := m.activeTests()
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -145,22 +176,23 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 		case "down":
-			if m.cursor < len(availableTests)-1 {
+			if m.cursor < len(tests)-1 {
 				m.cursor++
 			}
 		case "b":
-			// Go back to mode selection
-			m.uiState = VIEW_SELECT_MODE
+			// Go back to section selection
+			m.uiState = VIEW_SELECT_SECTION
 			m.cursor = 0
+			m.selectedTests = make(map[int]struct{})
 			return m, nil
 		case " ":
 			if m.cursor == 0 {
 				if _, ok := m.selectedTests[m.cursor]; !ok {
-					for i := range len(availableTests) {
+					for i := range len(tests) {
 						m.selectedTests[i] = struct{}{}
 					}
 				} else {
-					for i := range len(availableTests) {
+					for i := range len(tests) {
 						delete(m.selectedTests, i)
 					}
 				}
@@ -184,11 +216,7 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Initialize results
 			m.results = []TestResult{}
-			// Calculate mapping from result index to availableTests index is not needed
-			// if we iterate availableTests in order in both places.
-			// But the goroutine iterates availableTests and only creates results for selected ones.
-			// So we need to match that.
-			for idx, test := range availableTests {
+			for idx, test := range tests {
 				if idx == 0 {
 					continue
 				}
@@ -201,24 +229,28 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+			// Capture the active test list for the goroutine
+			activeTests := tests
+			selectedTests := m.selectedTests
+
 			// Run tests in a separate goroutine
 			go func() {
 				defer close(m.logChan)
 				w := &chanWriter{ch: m.logChan}
 				resultIdx := 0
-				for idx := range availableTests { // iterate in order
+				for idx := range activeTests { // iterate in order
 					if idx == 0 {
 						continue // skip select all
 					}
-					if _, ok := m.selectedTests[idx]; !ok {
+					if _, ok := selectedTests[idx]; !ok {
 						continue
 					}
 
 					w.ch <- TestStartMsg{Index: resultIdx}
 
 					success := false
-					// Map index to commander function
-					switch availableTests[idx].opCode {
+					// Map opCode to commander function
+					switch activeTests[idx].opCode {
 					case globals.CMD_TEST_SERIAL_CONN:
 						success = commander.TestSerialConnection(m.serial, w)
 					case globals.CMD_GET_ANALOG_V1_SD_UPDATE:
@@ -229,8 +261,6 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 						success = commander.InspectSDCards(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_SD_UPDATE)
 					case globals.CMD_GET_ANALOG_V2_PT_READING:
 						success = commander.CheckAnalogPTCommand(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_PT_READING)
-					// case globals.CMD_GET_ANALOG_LC_READING:
-					// 	success = commander.CheckAnalogLCCommand(m.serial, w)
 					case globals.CMD_GET_DIGITAL_V1_SD_UPDATE:
 						success = commander.InspectSDCards(m.serial, w, "Digital V1", globals.CMD_GET_DIGITAL_V1_SD_UPDATE)
 					case globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING:
@@ -290,6 +320,7 @@ func (m model) updateTestRunner(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
+	commands := m.activeCommands()
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -298,22 +329,23 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 		case "down":
-			if m.cursor < len(availableCommands)-1 {
+			if m.cursor < len(commands)-1 {
 				m.cursor++
 			}
 		case "b":
-			// Go back to mode selection
-			m.uiState = VIEW_SELECT_MODE
+			// Go back to section selection
+			m.uiState = VIEW_SELECT_SECTION
 			m.cursor = 0
+			m.selectedCommands = make(map[int]struct{})
 			return m, nil
 		case " ":
 			if m.cursor == 0 {
 				if _, ok := m.selectedCommands[m.cursor]; !ok {
-					for i := range len(availableCommands) {
+					for i := range len(commands) {
 						m.selectedCommands[i] = struct{}{}
 					}
 				} else {
-					for i := range len(availableCommands) {
+					for i := range len(commands) {
 						delete(m.selectedCommands, i)
 					}
 				}
@@ -334,7 +366,7 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Initialize results
 			m.results = []TestResult{}
-			for idx, cmd := range availableCommands {
+			for idx, cmd := range commands {
 				if idx == 0 {
 					continue
 				}
@@ -347,23 +379,27 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+			// Capture the active command list for the goroutine
+			activeCommands := commands
+			selectedCommands := m.selectedCommands
+
 			// Run commands in a separate goroutine
 			go func() {
 				defer close(m.logChan)
 				w := &chanWriter{ch: m.logChan}
 				resultIdx := 0
-				for idx := range availableCommands {
+				for idx := range activeCommands {
 					if idx == 0 {
 						continue
 					}
-					if _, ok := m.selectedCommands[idx]; !ok {
+					if _, ok := selectedCommands[idx]; !ok {
 						continue
 					}
 
 					w.ch <- TestStartMsg{Index: resultIdx}
 
 					success := false
-					switch availableCommands[idx].opCode {
+					switch activeCommands[idx].opCode {
 					case globals.CMD_ENTER_NORMAL:
 						success = commander.EnterNormalCommand(m.serial, w)
 					case globals.CMD_ENTER_INSPECT:
