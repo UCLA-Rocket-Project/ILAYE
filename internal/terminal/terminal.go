@@ -26,6 +26,8 @@ const (
 	VIEW_LOADING
 )
 
+const FILLER_WHITESPACE = 0xFE
+
 type RocketSection int
 
 const (
@@ -137,15 +139,13 @@ type commandAndDesc struct {
 
 var logPool []string
 
-// Nose Cone tests (digital boards)
+// Nose Cone tests
 var noseConTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
+	{"--- RADIO ---", FILLER_WHITESPACE},
 	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
-	{"Get Digital V1 SD Card Update", globals.CMD_GET_DIGITAL_V1_SD_UPDATE},
-	{"Get Digital V1 Altimeter Reading", globals.CMD_GET_DIGITAL_V1_ALTIMETER_READING},
-	{"Get Digital V1 Shock 1 Reading", globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING},
-	{"Get Digital V1 IMU Reading", globals.CMD_GET_DIGITAL_V1_IMU_READING},
+	{"--- DIGITAL V2 ---", FILLER_WHITESPACE},
 	{"Get Digital V2 SD Card Update", globals.CMD_GET_DIGITAL_V2_SD_UPDATE},
 	{"Get Digital V2 Altimeter Reading", globals.CMD_GET_DIGITAL_V2_ALTIMETER_READING},
 	{"Get Digital V2 Shock 1 Reading", globals.CMD_GET_DIGITAL_V2_SHOCK_1_READING},
@@ -154,39 +154,53 @@ var noseConTests []commandAndDesc = []commandAndDesc{
 	{"Get Digital V2 GPS Reading", globals.CMD_GET_DIGITAL_V2_GPS_READING},
 }
 
-// Body Tube tests (analog boards)
+// Body Tube tests
 var bodyTubeTests []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Test uplinker serial connection", globals.CMD_TEST_SERIAL_CONN},
+	{"--- RADIO ---", FILLER_WHITESPACE},
 	{"Get Radio SD Card Update", globals.CMD_GET_RADIO_SD_UPDATE},
+	{"--- ANALOG V1 ---", FILLER_WHITESPACE},
 	{"Get Analog V1 SD Card Update", globals.CMD_GET_ANALOG_V1_SD_UPDATE},
 	{"Get Analog V1 PT Reading", globals.CMD_GET_ANALOG_V1_PT_READING},
+	{"--- ANALOG V2 ---", FILLER_WHITESPACE},
 	{"Get Analog V2 SD Card Update", globals.CMD_GET_ANALOG_V2_SD_UPDATE},
 	{"Get Analog V2 PT Reading", globals.CMD_GET_ANALOG_V2_PT_READING},
+	{"--- DIGITAL V1 ---", FILLER_WHITESPACE},
+	{"Get Digital V1 SD Card Update", globals.CMD_GET_DIGITAL_V1_SD_UPDATE},
+	{"Get Digital V1 Altimeter Reading", globals.CMD_GET_DIGITAL_V1_ALTIMETER_READING},
+	{"Get Digital V1 Shock 1 Reading", globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING},
+	{"Get Digital V1 IMU Reading", globals.CMD_GET_DIGITAL_V1_IMU_READING},
 }
 
-// Nose Cone commands (digital boards)
+// Nose Cone commands
 var noseConeCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
-	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
-	{"Clear Digital V1 SD", globals.CMD_CLEAR_DIGITAL_V1_SD},
-	{"Clear Digital V2 SD", globals.CMD_CLEAR_DIGITAL_V2_SD},
 	{"Jump Clock", globals.CMD_JUMP_CLK},
 	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
+	{"--- RADIO ---", FILLER_WHITESPACE},
+	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
+	{"--- DIGITAL V2 ---", FILLER_WHITESPACE},
+	{"Clear Digital V2 SD", globals.CMD_CLEAR_DIGITAL_V2_SD},
 }
 
-// Body Tube commands (analog boards)
+// Body Tube commands
 var bodyTubeCommands []commandAndDesc = []commandAndDesc{
 	{"Select All", 0xFF},
 	{"Enter Normal Mode", globals.CMD_ENTER_NORMAL},
 	{"Enter Inspect Mode", globals.CMD_ENTER_INSPECT},
-	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
-	{"Clear Analog V1 SD", globals.CMD_CLEAR_ANALOG_V1_SD},
-	{"Clear Analog V2 SD", globals.CMD_CLEAR_ANALOG_V2_SD},
 	{"Jump Clock", globals.CMD_JUMP_CLK},
 	{"Prepare for launch (No coming back!)", globals.CMD_ENTER_LAUNCH_MODE},
+	{"--- RADIO ---", FILLER_WHITESPACE},
+	{"Clear Radio SD", globals.CMD_CLEAR_RADIO_SD},
+	{"--- ANALOG V1 ---", FILLER_WHITESPACE},
+	{"Clear Analog V1 SD", globals.CMD_CLEAR_ANALOG_V1_SD},
+	{"--- ANALOG V2 ---", FILLER_WHITESPACE},
+	{"Clear Analog V2 SD", globals.CMD_CLEAR_ANALOG_V2_SD},
+	{"--- DIGITAL V1 ---", FILLER_WHITESPACE},
+	{"Clear Digital V1 SD", globals.CMD_CLEAR_DIGITAL_V1_SD},
 }
 
 // Helper to get the active test list based on selected section
@@ -363,7 +377,7 @@ func (m model) viewSelectSection() string {
 	s.WriteString(rail + noseColor.Render("  /     \\") + "\n")
 	s.WriteString(rail + noseColor.Render(" /_______\\") + "\n")
 	s.WriteString(rail + noseColor.Render("|         |") + "\n")
-	s.WriteString(rail + noseColor.Render("|    A    |") + "      " + renderSectionLabel(m.cursor == 0, "Digital Boards") + "\n")
+	s.WriteString(rail + noseColor.Render("|    A    |") + "      " + renderSectionLabel(m.cursor == 0, "Nose Cone") + "\n")
 	s.WriteString(rail + noseColor.Render("|    R    |") + "\n")
 	s.WriteString(rail + noseColor.Render("|    E    |") + "\n")
 	s.WriteString(rail + noseColor.Render("|    S    |") + "\n")
@@ -376,13 +390,11 @@ func (m model) viewSelectSection() string {
 
 	// ASCII Rocket Art - Body Tube (bottom)
 	s.WriteString(rail + bodyColor.Render("|         |") + "\n")
-	s.WriteString(rail + bodyColor.Render("|    P    |") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    I    |") + "\n")
+	s.WriteString(rail + bodyColor.Render("|    L    |") + "      " + renderSectionLabel(m.cursor == 1, "Body Tube") + "\n")
 	s.WriteString(rail + bodyColor.Render("|    A    |") + "\n")
-	s.WriteString(rail + bodyColor.Render("|    N    |") + "\n")
-	s.WriteString(rail + bodyColor.Render("|    D    |") + "      " + renderSectionLabel(m.cursor == 1, "Analog Boards") + "\n")
-	s.WriteString(rail + bodyColor.Render("|    O    |") + "\n")
-	s.WriteString(structColor.Render("  || ") + bodyColor.Render("/|    R    |\\") + "\n")
-	s.WriteString(structColor.Render("  ||") + bodyColor.Render("/ |    A    | \\") + "\n")
+	s.WriteString(structColor.Render("  || ") + bodyColor.Render("/|    Y    |\\") + "\n")
+	s.WriteString(structColor.Render("  ||") + bodyColor.Render("/ |    E    | \\") + "\n")
 	s.WriteString(structColor.Render("  ") + bodyColor.Render("/___|_________|___\\") + "\n")
 	s.WriteString(rail + bodyColor.Render("|:::::::::|") + "\n")
 	s.WriteString(rail + bodyColor.Render(" \\:::::::/") + "\n")
@@ -410,6 +422,15 @@ func (m model) viewSelectTests() string {
 
 	// Test list with checkboxes
 	for i, test := range tests {
+		if test.opCode == FILLER_WHITESPACE {
+			if test.commandName == "" {
+				s.WriteString("\n")
+			} else {
+				s.WriteString(fmt.Sprintf("\n  %s\n", headerStyle.Bold(true).Render(test.commandName)))
+			}
+			continue
+		}
+
 		cursor := renderCursor(i == m.cursor)
 		_, isSelected := m.selectedTests[i]
 		checkbox := renderCheckbox(isSelected)
@@ -539,6 +560,15 @@ func (m model) viewSelectCommands() string {
 
 	// Command list with checkboxes
 	for i, cmd := range commands {
+		if cmd.opCode == FILLER_WHITESPACE {
+			if cmd.commandName == "" {
+				s.WriteString("\n")
+			} else {
+				s.WriteString(fmt.Sprintf("\n  %s\n", headerStyle.Bold(true).Render(cmd.commandName)))
+			}
+			continue
+		}
+
 		cursor := renderCursor(i == m.cursor)
 		_, isSelected := m.selectedCommands[i]
 		checkbox := renderCheckbox(isSelected)

@@ -174,10 +174,16 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up":
 			if m.cursor > 0 {
 				m.cursor--
+				for m.cursor > 0 && tests[m.cursor].opCode == FILLER_WHITESPACE {
+					m.cursor--
+				}
 			}
 		case "down":
 			if m.cursor < len(tests)-1 {
 				m.cursor++
+				for m.cursor < len(tests)-1 && tests[m.cursor].opCode == FILLER_WHITESPACE {
+					m.cursor++
+				}
 			}
 		case "b":
 			// Go back to section selection
@@ -186,10 +192,16 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selectedTests = make(map[int]struct{})
 			return m, nil
 		case " ":
+			if tests[m.cursor].opCode == FILLER_WHITESPACE {
+				return m, nil
+			}
+
 			if m.cursor == 0 {
 				if _, ok := m.selectedTests[m.cursor]; !ok {
 					for i := range len(tests) {
-						m.selectedTests[i] = struct{}{}
+						if tests[i].opCode != FILLER_WHITESPACE {
+							m.selectedTests[i] = struct{}{}
+						}
 					}
 				} else {
 					for i := range len(tests) {
@@ -327,10 +339,16 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up":
 			if m.cursor > 0 {
 				m.cursor--
+				for m.cursor > 0 && commands[m.cursor].opCode == FILLER_WHITESPACE {
+					m.cursor--
+				}
 			}
 		case "down":
 			if m.cursor < len(commands)-1 {
 				m.cursor++
+				for m.cursor < len(commands)-1 && commands[m.cursor].opCode == FILLER_WHITESPACE {
+					m.cursor++
+				}
 			}
 		case "b":
 			// Go back to section selection
@@ -339,10 +357,16 @@ func (m model) updateSelectCommands(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selectedCommands = make(map[int]struct{})
 			return m, nil
 		case " ":
+			if commands[m.cursor].opCode == FILLER_WHITESPACE {
+				return m, nil
+			}
+
 			if m.cursor == 0 {
 				if _, ok := m.selectedCommands[m.cursor]; !ok {
 					for i := range len(commands) {
-						m.selectedCommands[i] = struct{}{}
+						if commands[i].opCode != FILLER_WHITESPACE {
+							m.selectedCommands[i] = struct{}{}
+						}
 					}
 				} else {
 					for i := range len(commands) {
