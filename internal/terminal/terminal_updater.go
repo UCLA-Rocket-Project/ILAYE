@@ -273,15 +273,15 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case globals.CMD_TEST_SERIAL_CONN:
 						success = commander.TestSerialConnection(m.serial, w)
 					case globals.CMD_GET_ANALOG_V1_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_SD_UPDATE)
+						success = commander.InspectSDCards(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_SD_UPDATE, false)
 					case globals.CMD_GET_ANALOG_V1_PT_READING:
 						success = commander.CheckAnalogPTCommand(m.serial, w, "Analog V1", globals.CMD_GET_ANALOG_V1_PT_READING)
 					case globals.CMD_GET_ANALOG_V2_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_SD_UPDATE)
+						success = commander.InspectSDCards(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_SD_UPDATE, false)
 					case globals.CMD_GET_ANALOG_V2_PT_READING:
 						success = commander.CheckAnalogPTCommand(m.serial, w, "Analog V2", globals.CMD_GET_ANALOG_V2_PT_READING)
 					case globals.CMD_GET_DIGITAL_V1_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Digital V1", globals.CMD_GET_DIGITAL_V1_SD_UPDATE)
+						success = commander.InspectSDCards(m.serial, w, "Digital V1", globals.CMD_GET_DIGITAL_V1_SD_UPDATE, false)
 					case globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING:
 						success = commander.CheckDigitalShockCmd(m.serial, w, "V1", globals.CMD_GET_DIGITAL_V1_SHOCK_1_READING)
 					case globals.CMD_GET_DIGITAL_V2_SHOCK_1_READING:
@@ -299,9 +299,9 @@ func (m model) updateSelectTests(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case globals.CMD_GET_DIGITAL_V2_GPS_READING:
 						success = commander.CheckDigitalGPSCommand(m.serial, w, "V2", globals.CMD_GET_DIGITAL_V2_GPS_READING)
 					case globals.CMD_GET_DIGITAL_V2_SD_UPDATE:
-						success = commander.InspectSDCards(m.serial, w, "Digital V2", globals.CMD_GET_DIGITAL_V2_SD_UPDATE)
+						success = commander.InspectSDCards(m.serial, w, "Digital V2", globals.CMD_GET_DIGITAL_V2_SD_UPDATE, false)
 					case globals.CMD_GET_RADIO_SD_UPDATE:
-						success = commander.InspectRadioSDCard(m.serial, w, "Radio", globals.CMD_GET_RADIO_SD_UPDATE)
+						success = commander.InspectSDCards(m.serial, w, "Radio", globals.CMD_GET_RADIO_SD_UPDATE, true)
 					}
 
 					w.ch <- TestResultMsg{Index: resultIdx, Success: success}

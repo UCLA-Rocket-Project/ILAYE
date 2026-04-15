@@ -36,7 +36,7 @@ func CheckDigitalShockCmd(conn SerialReaderWriter, log io.Writer, digitalBoardVe
 
 	shockUpdateMessage := getDispatchCommand(command)
 	conn.WriteSingleMessage(shockUpdateMessage[:], COMMAND_SEQUENCE_SIZE)
-	fmt.Fprintf(log, "[Check Digital %s Shock %d]: Sent command requesting Shock 1 update\n", digitalBoardVersion, shockNum)
+	fmt.Fprintf(log, "[Check Digital %s Shock %d]: Sent command requesting Shock %d update\n", digitalBoardVersion, shockNum, shockNum)
 
 	res, err := conn.ReadSingleOrTimeout()
 	if err != nil {

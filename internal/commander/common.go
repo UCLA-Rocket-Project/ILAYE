@@ -104,7 +104,7 @@ func JumpClocks(conn SerialReaderWriter, log io.Writer) bool {
 	return true
 }
 
-func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, command byte) bool {
+func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, command byte, canBeZero bool) bool {
 	fmt.Fprintf(log, "[Check %s SD]: Entering inspect mode\n", boardType)
 	if !EnterInspectCommand(conn, log) {
 		fmt.Fprintf(log, "[Check %s SD]: Failed to enter inspect mode\n", boardType)
@@ -139,7 +139,7 @@ func InspectSDCards(conn SerialReaderWriter, log io.Writer, boardType string, co
 		return false
 	}
 
-	return (firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
+	return canBeZero || (firstUpdate.FileSize < secondUpdate.FileSize && firstUpdate.LastTimestamp < secondUpdate.LastTimestamp)
 }
 
 func ClearSDCard(conn SerialReaderWriter, log io.Writer, boardType string, command byte) bool {
