@@ -2,9 +2,19 @@ package commander
 
 import (
 	"UCLA-Rocket-Project/ILAYE/internal/globals"
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 )
+
+type ModeTransitionErrorResponse struct {
+	code    uint8
+	a1State uint8
+	a2State uint8
+	d1State uint8
+	d2State uint8
+}
 
 func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 	fmt.Fprintf(log, "[Enter Normal Command]: sending command to enter normal mode\n")
@@ -14,14 +24,23 @@ func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 
 	res, err := conn.ReadSingleOrTimeout()
 	if err != nil {
-		fmt.Fprintf(log, "[Enter Normal Command]: Read timed out")
+		fmt.Fprintf(log, "[Enter Normal Command]: Read timed out on CLI")
 		return false
 	}
 
-	if res[0] == globals.CMD_ENTER_NORMAL {
+	switch res[0] {
+	case globals.CMD_ENTER_NORMAL:
 		fmt.Fprintf(log, "[Enter Normal Command]: Normal mode transition acknowledged\n")
-	} else {
-		fmt.Fprintf(log, "[Enter Normal Command]: Could not enter normal mode. The bad command was %d", res[0])
+	case globals.CMD_TIMEOUT:
+		fmt.Fprintf(log, "[Enter Normal Command]: Received error that transition failed")
+	case globals.CAN_RESPONSE_WRONG:
+		streamReader := bytes.NewReader(res[:])
+		var updateData ModeTransitionErrorResponse
+		if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
+			fmt.Fprintf(log, "[Enter Normal Command]: Got CAN_RESOPNSE_WRONG, but could not decode response")
+		} else {
+			fmt.Fprintf(log, "[Enter Normal Command]: Got CAN_RESOPNSE_WRONG, A1: %d, A2: %d, D1: %d, D2: %d", updateData.a1State, updateData.a2State, updateData.d1State, updateData.d2State)
+		}
 	}
 
 	return res[0] == globals.CMD_ENTER_NORMAL
@@ -35,14 +54,23 @@ func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 
 	res, err := conn.ReadSingleOrTimeout()
 	if err != nil {
-		fmt.Fprintf(log, "[Enter Inspect Command]: Read timed out")
+		fmt.Fprintf(log, "[Enter Inspect Command]: Read timed out on CLI")
 		return false
 	}
 
-	if res[0] == globals.CMD_ENTER_INSPECT {
+	switch res[0] {
+	case globals.CMD_ENTER_NORMAL:
 		fmt.Fprintf(log, "[Enter Inspect Command]: Inspect mode transition acknowledged\n")
-	} else {
-		fmt.Fprintf(log, "[Enter Inspect Command]: Could not enter inspect mode\n")
+	case globals.CMD_TIMEOUT:
+		fmt.Fprintf(log, "[Enter Inspect Command]: Received error that transition failed")
+	case globals.CAN_RESPONSE_WRONG:
+		streamReader := bytes.NewReader(res[:])
+		var updateData ModeTransitionErrorResponse
+		if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
+			fmt.Fprintf(log, "[Enter Inspect Command]: Got CAN_RESOPNSE_WRONG, but could not decode response")
+		} else {
+			fmt.Fprintf(log, "[Enter Inspect Command]: Got CAN_RESOPNSE_WRONG, A1: %d, A2: %d, D1: %d, D2: %d", updateData.a1State, updateData.a2State, updateData.d1State, updateData.d2State)
+		}
 	}
 
 	return res[0] == globals.CMD_ENTER_INSPECT
@@ -65,7 +93,7 @@ func EnterLaunchMode(conn SerialReaderWriter, log io.Writer) bool {
 
 	res, err := conn.ReadSingleOrTimeout()
 	if err != nil {
-		fmt.Fprintf(log, "[Enter Launch Mode]: Read timed out")
+		fmt.Fprintf(log, "[Enter Launch Mode]: Read timed out on CLI")
 		return false
 	} else if res[0] != globals.CMD_ENTER_LAUNCH_MODE {
 		fmt.Fprintf(log, "[Enter Launch Mode]: Could not enter launch mode")
@@ -88,7 +116,7 @@ func TestSerialConnection(conn SerialReaderWriter, log io.Writer) bool {
 
 	res, err := conn.ReadSingleOrTimeout()
 	if err != nil {
-		fmt.Fprintf(log, "[Test Serial Connection]: Read timed out")
+		fmt.Fprintf(log, "[Test Serial Connection]: Read timed out on CLI")
 		return false
 	}
 

@@ -49,6 +49,14 @@ func getSDUpdate(conn SerialReaderWriter, log io.Writer, command byte) *sdUpdate
 	var updateData sdUpdate
 	if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
 		fmt.Fprintf(log, "[SD Update]: Could not decode board response, %s\n", err)
+
+		switch res[0] {
+		case globals.CMD_TIMEOUT:
+			fmt.Fprintf(log, "[SD Update]: Received response that command timed out")
+		case globals.CAN_RESPONSE_WRONG:
+			fmt.Fprintf(log, "[SD Update]: Received response that can response was incorrect")
+		}
+
 		return nil
 	}
 	fmt.Fprintf(log, "[SD Update]: file size: %d, last update timestamp: %d\n", updateData.FileSize, updateData.LastTimestamp)
