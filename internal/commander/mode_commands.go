@@ -9,11 +9,11 @@ import (
 )
 
 type ModeTransitionErrorResponse struct {
-	code    uint8
-	a1State uint8
-	a2State uint8
-	d1State uint8
-	d2State uint8
+	Code    uint8
+	A1State uint8
+	A2State uint8
+	D1State uint8
+	D2State uint8
 }
 
 func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
@@ -39,7 +39,7 @@ func EnterNormalCommand(conn SerialReaderWriter, log io.Writer) bool {
 		if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
 			fmt.Fprintf(log, "[Enter Normal Command]: Got CAN_RESOPNSE_WRONG, but could not decode response")
 		} else {
-			fmt.Fprintf(log, "[Enter Normal Command]: Got CAN_RESOPNSE_WRONG, A1: %d, A2: %d, D1: %d, D2: %d", updateData.a1State, updateData.a2State, updateData.d1State, updateData.d2State)
+			fmt.Fprintf(log, "[Enter Normal Command]: Got CAN_RESOPNSE_WRONG, A1: %d, A2: %d, D1: %d, D2: %d", updateData.A1State, updateData.A2State, updateData.D1State, updateData.D2State)
 		}
 	}
 
@@ -69,7 +69,7 @@ func EnterInspectCommand(conn SerialReaderWriter, log io.Writer) bool {
 		if err := binary.Read(streamReader, binary.LittleEndian, &updateData); err != nil {
 			fmt.Fprintf(log, "[Enter Inspect Command]: Got CAN_RESOPNSE_WRONG, but could not decode response")
 		} else {
-			fmt.Fprintf(log, "[Enter Inspect Command]: Got CAN_RESOPNSE_WRONG, A1: %d, A2: %d, D1: %d, D2: %d", updateData.a1State, updateData.a2State, updateData.d1State, updateData.d2State)
+			fmt.Fprintf(log, "[Enter Inspect Command]: Got CAN_RESOPNSE_WRONG, A1: %d, A2: %d, D1: %d, D2: %d", updateData.A1State, updateData.A2State, updateData.D1State, updateData.D2State)
 		}
 	}
 
